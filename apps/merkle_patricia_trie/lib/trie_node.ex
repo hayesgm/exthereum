@@ -1,9 +1,32 @@
-defmodule MerklePatriciaTrie.Trie.NodeEncoder do
+defmodule MerklePatriciaTrie.Trie.Node do
+  @moduledoc """
+  This module encode or decodes nodes from our
+  trie form into RLP form. Effectively implements
+  c(I, i) from http://gavwood.com/Paper.pdf.
+  """
+
   alias MerklePatriciaTrie.Trie
   alias MerklePatriciaTrie.Trie.Storage
 
+  @type trie_node ::
+    :empty |
+    {:leaf, binary(), binary()} |
+    {:ext, binary(), binary()} |
+    {:branch, [binary()]}
+
   # TODO: Doc spec and test
 
+  @doc """
+  Given a node, this function will encode the node
+  and put the value to storage (for nodes that are
+  greater than 32 bytes encoded).
+
+  ## Examples
+
+  iex> encode_node({:leaf, [5,6,7], "ok"})
+  "abc"
+  """
+  @spec encode_node(trie_node, Trie.Tree.t) :: nil | binary()
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type()
@@ -32,7 +55,16 @@ defmodule MerklePatriciaTrie.Trie.NodeEncoder do
     decode_trie(%{trie| root_hash: node_hash})
   end
 
-  @spec decode_trie(Trie.Tree.t) :: Trie.trie_node
+  @doc """
+  Decodes the root of a given trie, effectively
+  undoing the encoding of c(I, i).
+
+  ## Examples
+
+  iex> decode_trie(trie)
+  {:leaf, [5,6,7], "ok"}
+  """
+  @spec decode_trie(Trie.Tree.t) :: trie_node
   def decode_trie(trie) do
     case Storage.get_node(trie) do
       [] -> :empty

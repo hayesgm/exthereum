@@ -1,5 +1,5 @@
 defmodule MerklePatriciaTrie.Trie.Helper do
-  alias MerklePatriciaTrie.Trie.NodeEncoder
+  alias MerklePatriciaTrie.Trie.Node
   require Logger
 
   # TODO: Test
@@ -17,7 +17,7 @@ defmodule MerklePatriciaTrie.Trie.Helper do
 
   defp do_inspect_trie(trie, depth, prefix \\ "") do
     whitespace = if depth > 0, do: for _ <- 1..(2*depth), do: " ", else: ""
-    trie_node = NodeEncoder.decode_trie(trie)
+    trie_node = Node.decode_trie(trie)
     node_info = inspect_trie_node(trie_node, trie, depth)
     "#{whitespace}#{prefix}Node: #{node_info}"
   end
@@ -60,7 +60,7 @@ defmodule MerklePatriciaTrie.Trie.Helper do
     end
 
     def do_verify_well_formed(trie, dict, values) do
-      case trie |> NodeEncoder.decode_trie do
+      case trie |> Node.decode_trie do
         :empty -> :ok
         {:leaf, k, v} ->
           if v == "" do

@@ -3,7 +3,7 @@ defmodule MerklePatriciaTrie.TrieTest do
   alias MerklePatriciaTrie.Trie
   # alias MerklePatriciaTrie.Trie.Helper
   alias MerklePatriciaTrie.Trie.Helper.Verifier
-  # alias MerklePatriciaTrie.Trie.NodeEncoder
+  # alias MerklePatriciaTrie.Trie.Node
 
   @max_32_bits 4294967296
 

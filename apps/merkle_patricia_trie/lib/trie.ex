@@ -9,7 +9,7 @@ defmodule MerklePatriciaTrie.Trie do
   """
   alias MerklePatriciaTrie.Trie.Helper
   alias MerklePatriciaTrie.Trie.Builder
-  alias MerklePatriciaTrie.Trie.NodeEncoder
+  alias MerklePatriciaTrie.Trie.Node
 
   defmodule Tree do
     defstruct [db: nil, root_hash: nil]
@@ -21,11 +21,6 @@ defmodule MerklePatriciaTrie.Trie do
   end
 
   @type key :: <<_::32>>
-  @type trie_node ::
-    :empty |
-    {:leaf, binary(), binary()} |
-    {:ext, binary(), binary()} |
-    {:branch, [binary()]}
 
   @doc """
   Contructs a new trie.
@@ -57,7 +52,7 @@ defmodule MerklePatriciaTrie.Trie do
   defp do_get(trie, nibbles=[nibble| rest]) do
     # Let's decode c(I, i)
 
-    case NodeEncoder.decode_trie(trie) do
+    case Node.decode_trie(trie) do
       :empty -> nil # no node, bail
       {:branch, branches, _} ->
         # branch node
@@ -82,7 +77,7 @@ defmodule MerklePatriciaTrie.Trie do
 
   defp do_get(trie, []) do
     # Only branch nodes can have values for a nil lookup
-    case NodeEncoder.decode_trie(trie) do
+    case Node.decode_trie(trie) do
       {:branch, branches, _} -> List.last(branches)
       {:leaf, [], v} -> v # TODO: Add a test for this
       _ -> nil
@@ -100,9 +95,9 @@ defmodule MerklePatriciaTrie.Trie do
     # update all previous ndes. This may require changing the
     # type of the node.
 
-    node_hash = NodeEncoder.decode_trie(trie)
+    node_hash = Node.decode_trie(trie)
     |> Builder.put_key(Helper.get_nibbles(key), value, trie)
-    |> NodeEncoder.encode_node(trie)
+    |> Node.encode_node(trie)
 
     %{trie|root_hash: node_hash}
   end
