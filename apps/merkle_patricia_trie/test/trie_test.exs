@@ -1,15 +1,12 @@
 defmodule MerklePatriciaTrie.TrieTest do
   use ExUnit.Case
   alias MerklePatriciaTrie.Trie
-  # alias MerklePatriciaTrie.Trie.Helper
-  alias MerklePatriciaTrie.Trie.Helper.Verifier
-  # alias MerklePatriciaTrie.Trie.Node
+  alias MerklePatriciaTrie.Trie.Verifier
 
   @max_32_bits 4294967296
 
   setup_all do
     MerklePatriciaTrie.DB.ETS.init()
-
     :ok
   end
 
@@ -226,7 +223,7 @@ defmodule MerklePatriciaTrie.TrieTest do
       # Helper.inspect_trie(trie)
 
       # Next, assert tree is well formed
-      assert Verifier.verify_well_formed(trie, values) == :ok
+      assert Verifier.verify_trie(trie, values) == :ok
     end
   end
 

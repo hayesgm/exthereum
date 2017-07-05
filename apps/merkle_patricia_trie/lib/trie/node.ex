@@ -3,6 +3,8 @@ defmodule MerklePatriciaTrie.Trie.Node do
   This module encode or decodes nodes from our
   trie form into RLP form. Effectively implements
   c(I, i) from http://gavwood.com/Paper.pdf.
+
+  TODO: Test
   """
 
   alias MerklePatriciaTrie.Trie
@@ -14,8 +16,6 @@ defmodule MerklePatriciaTrie.Trie.Node do
     {:ext, binary(), binary()} |
     {:branch, [binary()]}
 
-  # TODO: Doc spec and test
-
   @doc """
   Given a node, this function will encode the node
   and put the value to storage (for nodes that are
@@ -26,7 +26,7 @@ defmodule MerklePatriciaTrie.Trie.Node do
   iex> encode_node({:leaf, [5,6,7], "ok"})
   "abc"
   """
-  @spec encode_node(trie_node, Trie.Tree.t) :: nil | binary()
+  @spec encode_node(trie_node, Trie.t) :: nil | binary()
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type()
@@ -38,7 +38,7 @@ defmodule MerklePatriciaTrie.Trie.Node do
     [HexPrefix.encode({key, true}), value]
   end
 
-  defp encode_node_type({:branch, branches, _}) when length(branches) == 17 do
+  defp encode_node_type({:branch, branches}) when length(branches) == 17 do
     branches
   end
 
@@ -48,11 +48,6 @@ defmodule MerklePatriciaTrie.Trie.Node do
 
   defp encode_node_type(:empty) do
     []
-  end
-
-  # TODO: Spec
-  def decode_trie(node_hash, trie) do
-    decode_trie(%{trie| root_hash: node_hash})
   end
 
   @doc """
@@ -69,7 +64,7 @@ defmodule MerklePatriciaTrie.Trie.Node do
     case Storage.get_node(trie) do
       [] -> :empty
       branches when length(branches) == 17 ->
-        {:branch, branches, 2}
+        {:branch, branches}
       [hp_k,v] ->
         # extension or leaf node
         {prefix, is_leaf} = HexPrefix.decode(hp_k)

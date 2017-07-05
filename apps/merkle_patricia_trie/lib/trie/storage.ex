@@ -5,7 +5,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
   from http://gavwood.com/Paper.pdf
   """
 
-  alias MerklePatriciaTrie.Trie.Tree
+  alias MerklePatriciaTrie.Trie
 
   @max_rlp_len 32
 
@@ -16,7 +16,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
   ## Examples
 
     iex> MerklePatriciaTrie.DB.ETS.init()
-    iex> trie = %MerklePatriciaTrie.Trie.Tree{db: MerklePatriciaTrie.DB.ETS}
+    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS}
     iex> MerklePatriciaTrie.Trie.Storage.put_node(<<>>, trie)
     nil
     iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode("Hi"), trie)
@@ -24,7 +24,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
     iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
     <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>
   """
-  @spec put_node(RLP.t, Tree.t) :: nil | binary()
+  @spec put_node(RLP.t, Trie.t) :: nil | binary()
   def put_node(rlp_encoded_node, trie) do
     case byte_size(rlp_encoded_node) do
       0 -> nil # nil is nil
@@ -44,7 +44,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
   ## Examples
 
     iex> MerklePatriciaTrie.DB.ETS.init()
-    iex> trie = %MerklePatriciaTrie.Trie.Tree{db: MerklePatriciaTrie.DB.ETS}
+    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS}
     iex> MerklePatriciaTrie.Trie.Storage.get_node(%{trie| root_hash: <<130, 72, 105>>})
     "Hi"
     iex> MerklePatriciaTrie.Trie.Storage.get_node(%{trie| root_hash: <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>})
@@ -54,7 +54,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
     iex> MerklePatriciaTrie.Trie.Storage.get_node(%{trie| root_hash: <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>})
     ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
   """
-  @spec get_node(Tree.t) :: RLP.t | nil
+  @spec get_node(Trie.t) :: RLP.t | nil
   def get_node(trie) do
     case trie.root_hash do
       nil -> [] # nil

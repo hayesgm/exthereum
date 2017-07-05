@@ -1,5 +1,5 @@
-defmodule ListHelperTest do
+defmodule MerklePatriciaTrie.ListHelperTest do
   use ExUnit.Case, async: true
-  doctest ListHelper
+  doctest MerklePatriciaTrie.ListHelper
 
 end

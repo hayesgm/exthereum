@@ -1,29 +1,33 @@
-defmodule ListHelper do
+defmodule MerklePatriciaTrie.ListHelper do
+  @moduledoc """
+  Helpers for navigating lists, specifically for
+  finding shared prefixes and postfixes.
+  """
 
   @doc """
   Returns the post of list A if starts with list B, otherwise nil
 
   ## Examples
 
-    iex> ListHelper.get_postfix([1,2,3], [1,2])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([1,2,3], [1,2])
     [3]
 
-    iex> ListHelper.get_postfix([1,2,3,4], [1,2])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([1,2,3,4], [1,2])
     [3,4]
 
-    iex> ListHelper.get_postfix([1,2,3,4], [1])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([1,2,3,4], [1])
     [2,3,4]
 
-    iex> ListHelper.get_postfix([1,2,3,4], [0,1])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([1,2,3,4], [0,1])
     nil
 
-    iex> ListHelper.get_postfix([1,2,3,4], [])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([1,2,3,4], [])
     [1,2,3,4]
 
-    iex> ListHelper.get_postfix([1,2], [1,2,3])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([1,2], [1,2,3])
     nil
 
-    iex> ListHelper.get_postfix([], [])
+    iex> MerklePatriciaTree.ListHelper.get_postfix([], [])
     []
   """
   @spec get_postfix([], []) :: [] | nil
@@ -43,22 +47,22 @@ defmodule ListHelper do
 
   ## Examples
 
-    iex> ListHelper.overlap([1,2,3], [1,2])
+    iex> MerklePatriciaTree.ListHelper.overlap([1,2,3], [1,2])
     {[1,2],[3],[]}
 
-    iex> ListHelper.overlap([1,2,3], [1,2,3,4])
+    iex> MerklePatriciaTree.ListHelper.overlap([1,2,3], [1,2,3,4])
     {[1,2,3],[],[4]}
 
-    iex> ListHelper.overlap([1,2,3], [2,3,4])
+    iex> MerklePatriciaTree.ListHelper.overlap([1,2,3], [2,3,4])
     {[],[1,2,3],[2,3,4]}
 
-    iex> ListHelper.overlap([], [2,3,4])
+    iex> MerklePatriciaTree.ListHelper.overlap([], [2,3,4])
     {[],[],[2,3,4]}
 
-    iex> ListHelper.overlap([1,2,3], [])
+    iex> MerklePatriciaTree.ListHelper.overlap([1,2,3], [])
     {[],[1,2,3],[]}
 
-    iex> ListHelper.overlap([15, 10, 5, 11], [15, 11, 1, 14])
+    iex> MerklePatriciaTree.ListHelper.overlap([15, 10, 5, 11], [15, 11, 1, 14])
     {[15], [10, 5, 11], [11, 1, 14]}
   """
   @spec overlap([], []) :: {[], [], []}
