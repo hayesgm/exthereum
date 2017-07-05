@@ -48,7 +48,7 @@ defmodule MerklePatriciaTrie.Trie.Verifier do
     branch_tries = for branch <- branches, do: Trie.into(branch, trie)
 
     branches_well_formed = for branch_trie <- branch_tries do
-      do_verify_trie(branch_trie |> Trie.into(trie), dict, values)
+      do_verify_trie(branch_trie, dict, values)
     end
 
     not_okay_branches = Enum.filter(branches_well_formed, &(&1 != :ok))

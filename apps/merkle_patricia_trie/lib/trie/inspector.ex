@@ -1,4 +1,4 @@
-defmodule MerklePatriciaTrie.Inspector do
+defmodule MerklePatriciaTrie.Trie.Inspector do
   @moduledoc """
   A simple module to inspect and print the structure
   of tries.

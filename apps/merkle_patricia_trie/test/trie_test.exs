@@ -209,7 +209,7 @@ defmodule MerklePatriciaTrie.TrieTest do
         key = random_key()
         value = random_value()
 
-        updated_trie = Trie.update(trie, key, value) # |> Helper.inspect_trie
+        updated_trie = Trie.update(trie, key, value)
 
         # Verify each key exists in our trie
         for {k, v} <- dict do
@@ -220,7 +220,7 @@ defmodule MerklePatriciaTrie.TrieTest do
       end)
 
       # IO.inspect(values)
-      # Helper.inspect_trie(trie)
+      # MerklePatriciaTrie.Trie.Inspector.inspect_trie(trie)
 
       # Next, assert tree is well formed
       assert Verifier.verify_trie(trie, values) == :ok
