@@ -5,10 +5,12 @@ defmodule EVM.VM do
   """
 
   alias EVM.SubState
+  alias EVM.MachineCode
   alias EVM.MachineState
   alias EVM.ExecEnv
   alias EVM.Functions
   alias EVM.Gas
+  alias EVM.Instruction
   alias MerklePatriciaTrie.Trie
 
   @type state :: Trie.t
@@ -47,14 +49,20 @@ defmodule EVM.VM do
 
   @doc """
   Runs a single cycle of our VM returning the new state
+
+  ## Examples
+
+      # TODO: How to handle trie state in tests?
+      iex> EVM.VM.cycle(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>})
+      {%{}, %EVM.MachineState{pc: 1, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>}}
   """
   @spec cycle(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, MachineState.t, SubState.t, ExecEnv.t}
   def cycle(state, machine_state, sub_state, exec_env) do
     cost = Gas.cost(state, machine_state, exec_env)
 
-    # TODO: these are the other changes
-    # TODO: Replace with some variety of VM.run_instruction()
-    {state, machine_state, sub_state, exec_env} = {state, machine_state, sub_state, exec_env}
+    instruction = MachineCode.current_instruction(machine_state, exec_env) |> Instruction.decode
+
+    {state, machine_state, sub_state, exec_env} = Instruction.run_instruction(instruction, state, machine_state, sub_state, exec_env)
 
     machine_state = machine_state
       |> MachineState.subtract_gas(cost)

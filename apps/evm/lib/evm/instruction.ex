@@ -279,4 +279,25 @@ defmodule EVM.Instruction do
   def metadata(opcode) when is_integer(opcode) do
     Enum.at(@instructions, opcode)
   end
+
+  @doc """
+  Executes a single instruction. This simply does the effects of the instruction itself,
+  ignoring the rest of the actions of an instruction cycle. This will effect, for instance,
+  the stack, but will not effect the gas, etc.
+
+  ## Examples
+
+      # TODO: How to handle trie state in tests?
+      iex> EVM.Instruction.run_instruction(:ADD, %{}, %EVM.MachineState{stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{})
+      {%{}, %EVM.MachineState{stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{}}
+  """
+  @spec run_instruction(instruction, EVM.VM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.VM.state, MachineState.t, SubState.t, ExecEnv.t}
+  def run_instruction(instruction, state, machine_state, sub_state, exec_env) do
+    # TODO: Make better
+    instruction_metadata = metadata(instruction)
+    dw = if instruction_metadata, do: Map.get(instruction_metadata, :d), else: nil
+    {args, stack} = if dw, do: EVM.Stack.pop_n(machine_state.stack, dw), else: {[], machine_state.stack}
+
+    EVM.Instruction.Impl.exec(instruction, args, state, %{machine_state| stack: stack}, sub_state, exec_env)
+  end
 end
