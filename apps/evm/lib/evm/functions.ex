@@ -18,36 +18,43 @@ defmodule EVM.Functions do
 
   # Examples
 
-      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>})
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:add)>>})
       nil
 
-      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:MUL)>>})
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:mul)>>})
       nil
 
-      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:STOP)>>})
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:stop)>>})
       <<>>
 
-      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:SUICIDE)>>})
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:suicide)>>})
       <<>>
 
-      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{pc: 0}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:RETURN)>>})
-      "return"
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{stack: [0, 1], memory: <<0xabcd::16>>}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:return)>>})
+      <<0xab>>
 
-      # TODO: Handle proper return state
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{stack: [0, 2], memory: <<0xabcd::16>>}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:return)>>})
+      <<0xab, 0xcd>>
+
+      iex> EVM.Functions.is_normal_halting?(%EVM.MachineState{stack: [1, 2], memory: <<0xabcd::16>>}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:return)>>})
+      <<0xcd>>
   """
   @spec is_normal_halting?(MachineState.t, ExecEnv.t) :: nil | binary()
   def is_normal_halting?(machine_state, exec_env) do
     case MachineCode.current_instruction(machine_state, exec_env) |> Instruction.decode do
-      :RETURN -> h_return(machine_state)
-      x when x == :STOP or x == :SUICIDE -> <<>>
+      :return -> h_return(machine_state)
+      x when x == :stop or x == :suicide -> <<>>
       _ -> nil
     end
   end
 
   # Defined in Appendix H of the Yellow Paper
-  # TODO: Implement
-  defp h_return(_machine_state) do
-    "return"
+  defp h_return(machine_state) do
+    {[mem_start, mem_end], _} = EVM.Stack.pop_n(machine_state.stack, 2)
+
+    {result, _} = EVM.Memory.read(machine_state, mem_start, mem_end - mem_start)
+
+    result
   end
 
   @doc """
@@ -60,31 +67,31 @@ defmodule EVM.Functions do
 
       # TODO: Once we add gas cost, make this more reasonable
       # TODO: How do we pass in state?
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: -1}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: -1}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:add)>>})
       {:halt, :insufficient_gas}
 
       iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff}, %EVM.ExecEnv{machine_code: <<0xfe>>})
       {:halt, :undefined_instruction}
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: []}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: []}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:add)>>})
       {:halt, :stack_underflow}
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [5]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:JUMP)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [5]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:jump)>>})
       {:halt, :invalid_jump_destination}
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [1]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:JUMP), EVM.Instruction.encode(:JUMPDEST)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [1]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:jump), EVM.Instruction.encode(:jumpdest)>>})
       :continue
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [1, 5]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:JUMPI)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [1, 5]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:jumpi)>>})
       {:halt, :invalid_jump_destination}
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [1, 5]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:JUMPI), EVM.Instruction.encode(:JUMPDEST)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: [1, 5]}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:jumpi), EVM.Instruction.encode(:jumpdest)>>})
       :continue
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: (for _ <- 1..1024, do: 0x0)}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:STOP)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: (for _ <- 1..1024, do: 0x0)}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:stop)>>})
       :continue
 
-      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: (for _ <- 1..1024, do: 0x0)}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:PUSH1)>>})
+      iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: (for _ <- 1..1024, do: 0x0)}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:push1)>>})
       {:halt, :stack_overflow}
   """
   @spec is_exception_halt?(EVM.VM.state, MachineState.t, ExecEnv.t) :: :continue | {:halt, String.t}

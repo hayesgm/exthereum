@@ -16,13 +16,37 @@ defmodule EVM.VM do
   @type state :: Trie.t
   @type output :: <<>>
 
-  @spec run(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, Gas.t, SubState.t, output}
-  def run(state, machine_state, sub_state, exec_env) do
-    {n_state, n_gas, _n_machine_state, n_sub_state, n_output} = exec(state, machine_state, sub_state, exec_env)
+  @doc """
+  This function computes the Ξ function of the Section 9.4 of the Yellow Paper. This is the complete
+  result of running a given program in the VM.
 
-    # Note, we drop machine state from return value
+  ## Examples
 
-    {n_state, n_gas, n_sub_state, n_output}
+      # Full program
+      iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])})
+      {%{}, 5, [], [], 0, <<0x08::256>>}
+
+      # Program with implicit stop
+      iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add])})
+      {%{}, 5, [], [], 0, ""}
+
+      # Program with explicit stop
+      iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :stop])})
+      {%{}, 5, [], [], 0, ""}
+
+      # Program with exception halt
+      iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
+      {nil, 5, [], [], 0, ""}
+  """
+  @spec run(state, Gas.t, ExecEnv.t) :: {state, Gas.t, EVM.SubState.suicide_list, EVM.SubState.logs, EVM.SubState.refund, output}
+  def run(state, gas, exec_env) do
+    machine_state = %EVM.MachineState{gas: gas}
+    sub_state = %EVM.SubState{}
+
+    # Note, we drop exec env from return value
+    {n_state, n_machine_state, n_sub_state, _n_exec_env, output} = exec(state, machine_state, sub_state, exec_env)
+
+    {n_state, n_machine_state.gas, n_sub_state.suicide_list, n_sub_state.logs, n_sub_state.refund, output}
   end
 
   @doc """
@@ -30,19 +54,34 @@ defmodule EVM.VM do
   or exception is hit.
 
   TODO: Add gas to return
+
+  ## Examples
+
+      iex> EVM.VM.exec(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
+      {%{}, %EVM.MachineState{pc: 2, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])}, <<>>}
+
+      iex> EVM.VM.exec(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: []}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add])})
+      {%{}, %EVM.MachineState{pc: 6, gas: 5, stack: [8]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add])}, ""}
+
+      iex> EVM.VM.exec(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: []}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])})
+      {%{}, %EVM.MachineState{active_words: 1, memory: <<0x08::256>>, pc: 13, gas: 5, stack: []}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])}, <<0x08::256>>}
   """
-  @spec exec(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, MachineState.t, SubState.t, output}
+  @spec exec(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, MachineState.t, SubState.t, ExecEnv.t, output}
   def exec(state, machine_state, sub_state, exec_env) do
+    do_exec(state, machine_state, sub_state, exec_env, sub_state)
+  end
+
+  def do_exec(state, machine_state, sub_state, exec_env, original_sub_state) do
     case Functions.is_exception_halt?(state, machine_state, exec_env) do
       {:halt, _reason} ->
         # We're exception halting, undo it all.
-        {nil, machine_state, sub_state, exec_env, <<>>} # original sub-state?
+        {nil, machine_state, original_sub_state, exec_env, <<>>} # original sub-state?
       :continue ->
         {n_state, n_machine_state, n_sub_state, n_exec_env} = cycle(state, machine_state, sub_state, exec_env)
 
         case Functions.is_normal_halting?(machine_state, exec_env) do
-          nil -> exec(n_state, n_machine_state, n_sub_state, n_exec_env) # continue execution
-          output -> {n_state, n_machine_state, n_sub_state, output}      # break execution and return
+          nil -> do_exec(n_state, n_machine_state, n_sub_state, n_exec_env, original_sub_state) # continue execution
+          output -> {n_state, n_machine_state, n_sub_state, n_exec_env, output} # break execution and return
         end
     end
   end
@@ -53,8 +92,8 @@ defmodule EVM.VM do
   ## Examples
 
       # TODO: How to handle trie state in tests?
-      iex> EVM.VM.cycle(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>})
-      {%{}, %EVM.MachineState{pc: 1, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:ADD)>>}}
+      iex> EVM.VM.cycle(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
+      {%{}, %EVM.MachineState{pc: 1, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])}}
   """
   @spec cycle(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, MachineState.t, SubState.t, ExecEnv.t}
   def cycle(state, machine_state, sub_state, exec_env) do

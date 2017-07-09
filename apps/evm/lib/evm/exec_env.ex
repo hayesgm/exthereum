@@ -14,7 +14,7 @@ defmodule EVM.ExecEnv do
     data: nil,                   # d
     sender: nil,                 # s
     value_in_wei: nil,           # v
-    machine_code: nil,           # b
+    machine_code: <<>>,          # b
     header_of_block: nil,        # h
     stack_depth: nil]            # e
 

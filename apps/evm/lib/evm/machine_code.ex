@@ -87,4 +87,24 @@ defmodule EVM.MachineCode do
     end
   end
 
+  @doc """
+  Builds machine code for a given set of instructions and data.
+
+  ## Examples
+
+      iex> EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :return])
+      <<0x60, 0x03, 0x60, 0x05, 0x01, 0xf3>>
+
+      iex> EVM.MachineCode.compile([])
+      <<>>
+  """
+  def compile(code) do
+    for n <- code do
+      case n do
+        x when is_atom(x) -> EVM.Instruction.encode(n)
+        x when is_integer(x) -> x
+      end
+    end |> :binary.list_to_bin()
+  end
+
 end

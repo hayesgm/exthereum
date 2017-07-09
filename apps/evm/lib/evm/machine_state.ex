@@ -127,4 +127,22 @@ defmodule EVM.MachineState do
     %{exec_env| gas: exec_env.gas - gas}
   end
 
+  @doc """
+  After a memory operation, we may have incremented the total number
+  of active words. This function takes a memory offset accessed and
+  updates the machine state accordingly.
+
+  ## Examples
+
+      iex> %EVM.MachineState{active_words: 2} |> EVM.MachineState.maybe_set_active_words(1)
+      %EVM.MachineState{active_words: 2}
+
+      iex> %EVM.MachineState{active_words: 2} |> EVM.MachineState.maybe_set_active_words(3)
+      %EVM.MachineState{active_words: 3}
+  """
+  @spec maybe_set_active_words(t, EVM.val) :: t
+  def maybe_set_active_words(machine_state, last_word) do
+    %{machine_state | active_words: max(machine_state.active_words, last_word)}
+  end
+
 end

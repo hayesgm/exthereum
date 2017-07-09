@@ -10,9 +10,13 @@ defmodule EVM.SubState do
     refund: 0
   ]
 
+  @type suicide_list :: []
+  @type logs :: []
+  @type refund :: EVM.Wei.t
+
   @type t :: %{
-    suicide_list: [],
-    logs: [],
-    refund: EVM.Wei.t
+    suicide_list: suicide_list,
+    logs: logs,
+    refund: refund
   }
 end

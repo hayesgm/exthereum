@@ -6,6 +6,8 @@ defmodule EVM.Instruction.Metadata do
   defstruct [
     id: nil,
     sym: nil,
+    fun: nil,
+    args: [],
     d: nil,
     a: nil,
     description: nil
@@ -14,6 +16,8 @@ defmodule EVM.Instruction.Metadata do
   @type t :: %{
     id: integer(),
     sym: atom(),
+    fun: atom(),
+    args: [],
     d: integer(),
     a: integer(),
     description: String.t
