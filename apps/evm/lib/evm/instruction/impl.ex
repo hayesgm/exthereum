@@ -1558,8 +1558,11 @@ defmodule EVM.Instruction.Impl do
 
   ## Examples
 
-      iex> EVM.Instruction.Impl.return([5, 33], %{})
-      %MachineState{active_words: 2}
+      iex> EVM.Instruction.Impl.return([5, 33], %{machine_state: %EVM.MachineState{active_words: 0}})
+      %EVM.MachineState{active_words: 2}
+
+      iex> EVM.Instruction.Impl.return([5, 33], %{machine_state: %EVM.MachineState{active_words: 5}})
+      %EVM.MachineState{active_words: 5}
   """
   @spec return(stack_args, vm_map) :: op_result
   def return([_mem_start, mem_end], %{machine_state: machine_state}) do

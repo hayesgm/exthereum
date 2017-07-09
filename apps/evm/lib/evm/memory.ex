@@ -118,13 +118,13 @@ defmodule EVM.Memory do
 
   ## Examples
 
-      iex> get_active_words(0)
-      1
+      iex> EVM.Memory.get_active_words(0) # TODO: We may actually want this to start at 1, even for zero bytes read
+      0
 
-      iex> get_active_words(80)
-      4
+      iex> EVM.Memory.get_active_words(80)
+      3
 
-      iex> get_active_words(321)
+      iex> EVM.Memory.get_active_words(321)
       11
   """
   def get_active_words(bytes) do

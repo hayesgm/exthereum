@@ -32,23 +32,22 @@ defmodule EVM.MachineCode do
   destination for the machine code, false otherwise.
 
   TODO: Memoize
-  TODO: Convert test to use encode...
 
   ## Examples
 
-      iex> EVM.MachineCode.valid_jump_dest?(0, <<0x00, 0x01, 0x02, 0x5B, 0x00, 0x5B, 0x00>>)
+      iex> EVM.MachineCode.valid_jump_dest?(0, EVM.MachineCode.compile([:push1, 3, :push1, 5, :jumpdest, :add, :return, :jumpdest, :stop]))
       false
 
-      iex> EVM.MachineCode.valid_jump_dest?(3, <<0x00, 0x01, 0x02, 0x5B, 0x00, 0x5B, 0x00>>)
+      iex> EVM.MachineCode.valid_jump_dest?(4, EVM.MachineCode.compile([:push1, 3, :push1, 5, :jumpdest, :add, :return, :jumpdest, :stop]))
       true
 
-      iex> EVM.MachineCode.valid_jump_dest?(4, <<0x00, 0x01, 0x02, 0x5B, 0x00, 0x5B, 0x00>>)
+      iex> EVM.MachineCode.valid_jump_dest?(6, EVM.MachineCode.compile([:push1, 3, :push1, 5, :jumpdest, :add, :return, :jumpdest, :stop]))
       false
 
-      iex> EVM.MachineCode.valid_jump_dest?(5, <<0x00, 0x01, 0x02, 0x5B, 0x00, 0x5B, 0x00>>)
+      iex> EVM.MachineCode.valid_jump_dest?(7, EVM.MachineCode.compile([:push1, 3, :push1, 5, :jumpdest, :add, :return, :jumpdest, :stop]))
       true
 
-      iex> EVM.MachineCode.valid_jump_dest?(6, <<0x00, 0x01, 0x02, 0x5B, 0x00, 0x5B, 0x00>>)
+      iex> EVM.MachineCode.valid_jump_dest?(100, EVM.MachineCode.compile([:push1, 3, :push1, 5, :jumpdest, :add, :return, :jumpdest, :stop]))
       false
   """
   @spec valid_jump_dest?(MachineState.pc, t) :: boolean()
@@ -61,12 +60,11 @@ defmodule EVM.MachineCode do
   Returns the legal jump locations in the given machine code.
 
   TODO: Memoize
-  TODO: Convert test to use encode([:STOP, ADD, :MUL]) or such
 
   ## Example
 
-      iex> EVM.MachineCode.valid_jump_destinations(<<0x00, 0x01, 0x02, 0x5B, 0x00, 0x5B, 0x00>>)
-      [3, 5]
+      iex> EVM.MachineCode.valid_jump_destinations(EVM.MachineCode.compile([:push1, 3, :push1, 5, :jumpdest, :add, :return, :jumpdest, :stop]))
+      [4, 7]
   """
   @spec valid_jump_destinations(t) :: [MachineState.pc]
   def valid_jump_destinations(machine_code) do
@@ -81,7 +79,7 @@ defmodule EVM.MachineCode do
 
     cond do
       pos >= byte_size(machine_code) -> []
-      instruction == :JUMPDEST ->
+      instruction == :jumpdest ->
         [pos | do_valid_jump_destinations(machine_code, next_pos)]
       true -> do_valid_jump_destinations(machine_code, next_pos)
     end

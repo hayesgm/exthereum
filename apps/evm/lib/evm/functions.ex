@@ -109,7 +109,7 @@ defmodule EVM.Functions do
         {:halt, :undefined_instruction}
       length(machine_state.stack) < dw ->
         {:halt, :stack_underflow}
-      Enum.member?([:JUMP, :JUMPI], instruction) and
+      Enum.member?([:jump, :jumpi], instruction) and
         not MachineCode.valid_jump_dest?(s0, exec_env.machine_code) ->
           {:halt, :invalid_jump_destination}
       Stack.length(machine_state.stack) - dw + aw > @max_stack ->

@@ -340,7 +340,7 @@ defmodule EVM.Instruction do
       iex> EVM.Instruction.merge_state(:noop, :add, %{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{})
       {%{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{}}
 
-      iex> EVM.Instruction.merge_state(:unimplemented, :add, %{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{})
+      iex> EVM.Instruction.merge_state(:unimplemented, :blarg, %{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{})
       {%{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{}}
 
       iex> EVM.Instruction.merge_state(%{stack: [1, 2, 3]}, :add, %{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{})

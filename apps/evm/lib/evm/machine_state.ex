@@ -37,29 +37,29 @@ defmodule EVM.MachineState do
 
   ## Examples
 
-      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: [100]}, %EVM.ExecEnv{machine_code: <<0x00, EVM.Instruction.encode(:ADD)>>}) |> EVM.MachineState.get_pc() # standard add instruction
+      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 4, stack: [100]}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :return])}) |> EVM.MachineState.get_pc() # standard add instruction
+      5
+
+      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 0, stack: [100]}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :return])}) |> EVM.MachineState.get_pc() # standard push1 instruction
       2
 
-      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: [100]}, %EVM.ExecEnv{machine_code: <<0x00, EVM.Instruction.encode(:MUL)>>}) |> EVM.MachineState.get_pc() # standard mul instruction
-      2
-
-      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: [100]}, %EVM.ExecEnv{machine_code: <<0x00, EVM.Instruction.encode(:JUMP)>>}) |> EVM.MachineState.get_pc() # direct jump instruction
+      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 2, stack: [100]}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :jump, :jumpdest, :return])}) |> EVM.MachineState.get_pc() # direct jump instruction
       100
 
-      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: [100, 0]}, %EVM.ExecEnv{machine_code: <<0x00, EVM.Instruction.encode(:JUMPI)>>}) |> EVM.MachineState.get_pc() # branching jump instruction (fall-through)
+      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: [100, 0]}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :jumpi, :return])}) |> EVM.MachineState.get_pc() # branching jump instruction (fall-through)
       2
 
-      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: [100, 1]}, %EVM.ExecEnv{machine_code: <<0x00, EVM.Instruction.encode(:JUMPI)>>}) |> EVM.MachineState.get_pc() # branching jump instruction (follow)
+      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 2, stack: [100, 1]}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :jumpi, :return])}) |> EVM.MachineState.get_pc() # branching jump instruction (follow)
       100
 
-      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 1, stack: []}, %EVM.ExecEnv{machine_code: <<0x00, EVM.Instruction.encode(:JUMPI)>>}) # branching jump instruction (follow)
+      iex> EVM.MachineState.next_pc(%EVM.MachineState{pc: 0, stack: []}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:jumpi)>>}) # branching jump instruction with no stack
       ** (FunctionClauseError) no function clause matching in EVM.Stack.pop_n/2
   """
   @spec next_pc(MachineState.t, ExecEnv.t) :: MachineState.t
   def next_pc(machine_state, exec_env) do
     pc = case MachineCode.current_instruction(machine_state, exec_env) |> Instruction.decode do
-      :JUMP -> jump_location(machine_state)
-      :JUMPI -> jump_i_location(machine_state)
+      :jump -> jump_location(machine_state)
+      :jumpi -> jump_i_location(machine_state)
       w -> Instruction.next_instr_pos(machine_state.pc, w)
     end
 
