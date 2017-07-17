@@ -4,6 +4,8 @@ defmodule Blockchain.Transaction do
   of the Yellow Paper (http://gavwood.com/Paper.pdf).
   """
 
+  alias Blockchain.Account
+
   defstruct [
     nonce: nil,       # Tn
     gas_price: nil,   # Tp
@@ -104,9 +106,17 @@ defmodule Blockchain.Transaction do
         Blockchain.Contract.message_call(state, sender, originator, recipient, recipient, gas, trx.gas_price, trx.value, apparent_value, trx.data, stack_depth, block_header) # Θ_3
     end
 
-    # TODO: Compute refund (Eq.(72))
-    refund = 0
+    refund = calculate_refund(trx, remaining_gas, sub_state.refund)
 
+    state_after_gas = finalize_transaction_gas(state, sender, trx, refund, block_header)
+
+    state_after_suicides = Enum.reduce(state, sub_state.suicide_list, fn (address, state) ->
+      Account.del_account(state, address)
+    end)
+
+    state_after_suicides
+
+    # TODO: We need to track Υ^g and Υ^l
   end
 
   @doc """
@@ -132,22 +142,68 @@ defmodule Blockchain.Transaction do
   """
   @spec begin_transaction(EVM.state, EVM.address, t) :: EVM.VM.state
   def begin_transaction(state, sender, trx) do
-    {:ok, state} = Blockchain.Account.transfer(state, sender, trx.to, trx.value)
-
-    Blockchain.Account.update_account(state, sender, fn (acc) -> %{acc | nonce: acc.nonce + 1} end)
+    state
+      |> Account.transfer!(sender, trx.to, trx.value)
+      |> Account.increment_nonce(sender)
   end
 
   @doc """
-  Pays miner, according to Eq.(73), Eq.(74), Eq.(75) and Eq.(76).
+  Finalizes the gas payout, repaying the sender for excess or refunded gas
+  and paying the miner his due. This is defined according to Eq.(73), Eq.(74),
+  Eq.(75) and Eq.(76) of the Yellow Paper.
 
   Again, we take a sender so that we don't have to re-compute the sender
   address several times.
 
-  TODO: Add tests
+  ## Examples
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> trx = %Blockchain.Transaction{gas_price: 10, gas_limit: 30}
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 11})
+      ...>   |> Blockchain.Account.put_account(<<0x02::160>>, %Blockchain.Account{balance: 22})
+      iex> Blockchain.Transaction.finalize_transaction_gas(state, <<0x01::160>>, trx, 5, %Blockchain.Block.Header{beneficiary: <<0x02::160>>})
+      ...>   |> Blockchain.Account.get_accounts([<<0x01::160>>, <<0x02::160>>])
+      [
+        %Blockchain.Account{balance: 61},
+        %Blockchain.Account{balance: 272},
+      ]
   """
-  @spec pay_miner(EVM.state, EVM.address, t, EVM.Gas.t, Blockchain.Block.Header.t) :: EVM.state
-  def pay_miner(state, sender, trx, gas_used, block_header) do
-    state # ...
+  @spec finalize_transaction_gas(EVM.state, EVM.address, t, EVM.Gas.t, Blockchain.Block.Header.t) :: EVM.state
+  def finalize_transaction_gas(state, sender, trx, refund, block_header) do
+    state
+      |> Account.add_wei(sender, refund * trx.gas_price) # Eq.(74)
+      |> Account.add_wei(block_header.beneficiary, (trx.gas_limit - refund) * trx.gas_price) # Eq.(75)
+  end
+
+  @doc """
+  Caluclates the amount which should be refunded based on the current transactions
+  final usage. This includes the remaining gas plus refunds from clearing storage.
+
+  The specs calls for capping the refund at half of the total amount of gas used.
+
+  This function is defined as `g*` in Eq.(72) in the Yellow Paper.
+
+  ## Examples
+
+      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 5)
+      15
+
+      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 99)
+      55
+
+      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 0)
+      10
+
+      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 11, 99)
+      55
+  """
+  @spec calculate_refund(t, EVM.Gas.t, EVM.SubState.refund) :: EVM.Gas.t
+  def calculate_refund(trx, remaining_gas, refund) do
+    # TODO: Add a math helper, finally
+    max_refund = round( :math.floor( ( trx.gas_limit - remaining_gas ) / 2 ) )
+
+    remaining_gas + min(max_refund, refund)
   end
 
 end

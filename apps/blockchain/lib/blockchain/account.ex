@@ -36,6 +36,9 @@ defmodule Blockchain.Account do
   sending account is nil or has an insufficient balance, but we add
   a few extra checks just in case.
 
+  Note: transferring value to an empty account still adds value to said account,
+        even though it's effectively a zombie.
+
   ## Examples
 
       iex> MerklePatriciaTrie.DB.ETS.init()
@@ -64,31 +67,20 @@ defmodule Blockchain.Account do
   """
   @spec transfer(EVM.state, EVM.address, EVM.address, EVM.Wei.t) :: {:ok, EVM.state} | {:error, String.t}
   def transfer(state, from, to, wei) do
-    # Transferring value to an empty account still adds value to said account,
-    # even though it's effectively a zombie.
+    # TODO: Decide if we want to waste the cycles to pull
+    # the account information when `add_wei` will do that itself.
     from_account = get_account(state, from)
-
-    to_account = case get_account(state, to) do
-      nil -> %__MODULE__{}
-      acct -> acct
-    end
 
     cond do
       wei < 0 -> {:error, "wei transfer cannot be negative"}
       from_account == nil -> {:error, "sender account does not exist"}
+      from_account.balance < wei -> {:error, "sender account insufficient wei"}
       true ->
-        from_account_new_balance = from_account.balance - wei
-        to_account_new_balance = to_account.balance + wei
-
-        cond do
-          from_account_new_balance < 0 -> {:error, "sender account insufficient wei"}
-          from_account_new_balance > from_account.balance -> {:error, "sender account cannot increase from transfer"}
-          to_account_new_balance < to_account.balance -> {:error, "receiver account cannot decrease from transfer"}
-          true ->
-            {:ok, state
-              |> put_account(from, %{from_account | balance: from_account_new_balance})
-              |> put_account(to, %{to_account | balance: to_account_new_balance})}
-        end
+        {:ok,
+          state
+            |> add_wei(from, -1 * wei)
+            |> add_wei(to, wei)
+        }
     end
   end
 
@@ -194,11 +186,30 @@ defmodule Blockchain.Account do
   def get_account(state, address) do
     case Trie.get(state, address) do
       nil -> nil
+      <<>> -> nil # TODO: Is this the same as deleting the account?
       encoded_account ->
           encoded_account
           |> RLP.decode()
           |> deserialize()
     end
+  end
+
+  @doc """
+  Helper function to load multiple accounts.
+
+  ## Examples
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.update(MerklePatriciaTrie.Trie.new(), <<0x01::160>>, RLP.encode([5, 6, <<1>>, <<2>>]))
+      iex> Blockchain.Account.get_accounts(state, [<<0x01::160>>, <<0x02::160>>])
+      [
+        %Blockchain.Account{nonce: 5, balance: 6, storage_root: <<0x01>>, code_hash: <<0x02>>},
+        nil
+      ]
+  """
+  @spec get_accounts(EVM.state, [EVM.address]) :: [t | nil]
+  def get_accounts(state, addresses) do
+    for address <- addresses, do: get_account(state, address)
   end
 
   @doc """
@@ -222,6 +233,31 @@ defmodule Blockchain.Account do
   end
 
   @doc """
+  Completely removes an account from the world state. This is used,
+  for instance, after a suicide. This is defined from Eq.(77) and
+  Eq.(78) in the Yellow Paper.
+
+  ## Examples
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      ...>   |> Blockchain.Account.del_account(<<0x01::160>>)
+      ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
+      nil
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.del_account(<<0x01::160>>)
+      ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
+      nil
+  """
+  @spec del_account(EVM.state, EVM.address) :: EVM.state
+  def del_account(state, address) do
+    Trie.update(state, address, <<>>)
+  end
+
+  @doc """
   Gets and updates an account based on a given input
   function `fun`. Account passed to `fun` will be blank
   instead of nil if account doesn't exist.
@@ -229,14 +265,14 @@ defmodule Blockchain.Account do
   ## Examples
 
       iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> state = MerklePatriciaTrie.Trie.new()
+      iex> MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...>   |> Blockchain.Account.update_account(<<0x01::160>>, fn (acc) -> %{acc | balance: acc.balance + 5} end)
       ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{balance: 15}
 
       iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> state = MerklePatriciaTrie.Trie.new()
+      iex> MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.update_account(<<0x01::160>>, fn (acc) -> %{acc | nonce: acc.nonce + 1} end)
       ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{nonce: 1}
@@ -252,21 +288,44 @@ defmodule Blockchain.Account do
   @doc """
   Simple helper function to increment a nonce value.
 
-  TODO: Add tests
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{nonce: 10})
+      iex> state
+      ...> |> Blockchain.Account.increment_nonce(<<0x01::160>>)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      %Blockchain.Account{nonce: 11}
   """
   @spec increment_nonce(EVM.state, EVM.address) :: EVM.state
   def increment_nonce(state, address) do
-
+    update_account(state, address, fn (acct) ->
+      %{acct | nonce: acct.nonce + 1}
+    end)
   end
 
   @doc """
-  Simple helper function to adjust wei in an account.
+  Simple helper function to adjust wei in an account. This
+  will raise if we attempt to reduce wei in an account to less than zero.
 
-  TODO: Add tests
+  ## Examples
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      iex> state
+      ...> |> Blockchain.Account.add_wei(<<0x01::160>>, 13)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      %Blockchain.Account{balance: 23}
   """
   @spec add_wei(EVM.state, EVM.address, EVM.Wei.t) :: EVM.state
   def add_wei(state, address, delta_wei) do
+    update_account(state, address, fn (acct) ->
+      updated_balance = acct.balance + delta_wei
 
+      if updated_balance < 0, do: raise "wei reduced to less than zero"
+
+      %{acct | balance: updated_balance}
+    end)
   end
 
 end
