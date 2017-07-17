@@ -1,8 +1,8 @@
-defmodule EVM.Mixfile do
+defmodule Blockchain.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :evm,
+    [app: :blockchain,
      version: "0.1.0",
      build_path: "../../_build",
      config_path: "../../config/config.exs",
@@ -20,7 +20,7 @@ defmodule EVM.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [extra_applications: [:logger],
-     mod: {EVM.Application, []}]
+     mod: {Blockchain.Application, []}]
   end
 
   # Dependencies can be Hex packages:
@@ -38,7 +38,10 @@ defmodule EVM.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:merkle_patricia_trie, in_umbrella: true}
+      {:libsecp256k1, github: "mbrix/libsecp256k1", manager: :rebar},
+      {:keccakf1600, "~> 2.0.0"},
+      {:rlp, in_umbrella: true},
+      {:merkle_patricia_trie, in_umbrella: true},
     ]
   end
 end

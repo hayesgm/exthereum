@@ -6,7 +6,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
   """
 
   alias MerklePatriciaTrie.Trie
-  alias MerklePatriciaTrie.Trie.Helper
+  # alias MerklePatriciaTrie.Trie.Helper
 
   @max_rlp_len 32
 

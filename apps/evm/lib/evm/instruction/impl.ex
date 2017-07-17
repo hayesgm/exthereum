@@ -8,6 +8,7 @@ defmodule EVM.Instruction.Impl do
   alias EVM.MachineState
   alias EVM.SubState
   alias EVM.ExecEnv
+  alias MerklePatriciaTrie.Trie
 
   @type stack_args :: [EVM.val]
   @type vm_map :: %{
@@ -801,33 +802,67 @@ defmodule EVM.Instruction.Impl do
   end
 
   @doc """
-  Load word from storage
+  Load word from storage.
 
-  TODO: Implement opcode
+  TODO: Handle signed values?
 
   ## Examples
 
-      iex> EVM.Instruction.Impl.sload([], %{stack: []})
-      :unimplemented
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})[:state]
+      iex> EVM.Instruction.Impl.sload([0x11223344556677889900], %{state: state, stack: []})
+      %{
+        stack: [0x111222333444555]
+      }
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})[:state]
+      iex> EVM.Instruction.Impl.sload([0x1234], %{state: state, stack: []})
+      %{
+        stack: [0x0]
+      }
   """
   @spec sload(stack_args, vm_map) :: op_result
-  def sload(_args, %{stack: _stack}) do
-    :unimplemented
+  def sload([key], %{state: state, stack: stack}) do
+    stack_value = case Trie.get(state, <<key::size(256)>>) do
+      nil -> 0
+      value -> :binary.decode_unsigned(value)
+    end
+
+    stack |> push(stack_value)
   end
 
   @doc """
-  Save word to storage
+  Save word to storage.
 
-  TODO: Implement opcode
+  Defined as `σ′[Ia]_s[μ_s[0]] ≡ μ_s[1]`
+
+  TODO: Complex gas costs, including refund.
+  TODO: Handle signed values
 
   ## Examples
 
-      iex> EVM.Instruction.Impl.sstore([], %{stack: []})
-      :unimplemented
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})
+      %{
+        state: %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS, root_hash: <<128, 58, 53, 102, 7, 182, 120, 131, 145, 91, 222, 83, 56, 42, 251, 168, 203, 138, 130, 246, 76, 122, 110, 218, 183, 131, 33, 205, 154, 136, 194, 212>>}
+      }
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})[:state] |> MerklePatriciaTrie.Trie.Inspector.all_values()
+      [
+        {<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+           17, 34, 51, 68, 85, 102, 119, 136, 153, 0>>,
+         <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 1, 17, 34, 35, 51, 68, 69, 85>>
+        }
+      ]
   """
   @spec sstore(stack_args, vm_map) :: op_result
-  def sstore(_args, %{stack: _stack}) do
-    :unimplemented
+  def sstore([key, value], %{state: state}) do
+    %{
+      state: Trie.update(state, <<key::size(256)>>, <<value::size(256)>>)
+    }
   end
 
   @doc """

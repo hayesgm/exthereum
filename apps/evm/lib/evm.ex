@@ -3,7 +3,12 @@ defmodule EVM do
   Documentation for EVM.
   """
 
+  @type state :: Trie.t
+  @type trie_root :: <<_::256>>
   @type val :: integer()
+  @type address :: <<_::160>>
+  @type hash :: <<_::256>>
+  @type timestamp :: integer()
 
   @max_int round(:math.pow(2, 256))
 

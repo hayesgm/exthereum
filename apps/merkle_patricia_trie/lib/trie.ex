@@ -18,7 +18,7 @@ defmodule MerklePatriciaTrie.Trie do
 
   @type t :: %__MODULE__{
     db: DB.t,
-    root_hash: <<_::32>>,
+    root_hash: EVM.trie_root,
   }
 
   @type key :: <<_::32>>
@@ -97,7 +97,7 @@ defmodule MerklePatriciaTrie.Trie do
   @doc """
   Updates a trie by setting key equal to value.
   """
-  @spec update(__MODULE__.t, __MODULE__.key, RLP.t) :: :ok
+  @spec update(__MODULE__.t, __MODULE__.key, RLP.t) :: __MODULE__.t
   def update(trie, key, value) do
     # We're going to recursively walk toward our key,
     # then we'll add our value (either a new leaf or the value

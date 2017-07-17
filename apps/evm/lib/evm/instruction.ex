@@ -309,7 +309,7 @@ defmodule EVM.Instruction do
       iex> EVM.Instruction.run_instruction(:log0, %{}, %EVM.MachineState{stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{})
       {%{}, %EVM.MachineState{stack: []}, %EVM.SubState{}, %EVM.ExecEnv{}}
   """
-  @spec run_instruction(instruction, EVM.VM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.VM.state, MachineState.t, SubState.t, ExecEnv.t}
+  @spec run_instruction(instruction, EVM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.state, MachineState.t, SubState.t, ExecEnv.t}
   def run_instruction(instruction, state, machine_state, sub_state, exec_env) do
     # TODO: Make better / break into smaller sections
     instruction_metadata = metadata(instruction)
@@ -361,7 +361,7 @@ defmodule EVM.Instruction do
       iex> EVM.Instruction.merge_state(%EVM.MachineState{pc: 5, stack: [4, 5]}, :add, %{}, %EVM.MachineState{}, %EVM.SubState{}, %EVM.ExecEnv{})
       {%{}, %EVM.MachineState{pc: 5, stack: [4, 5]}, %EVM.SubState{}, %EVM.ExecEnv{}}
   """
-  @spec merge_state(EVM.Instruction.Impl.op_result, instruction, EVM.VM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.VM.state, MachineState.t, SubState.t, ExecEnv.t}
+  @spec merge_state(EVM.Instruction.Impl.op_result, instruction, EVM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.state, MachineState.t, SubState.t, ExecEnv.t}
   def merge_state(:noop, _instruction, state, machine_state, sub_state, exec_env) do
     {state, machine_state, sub_state, exec_env}
   end

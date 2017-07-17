@@ -65,7 +65,7 @@ defmodule MerklePatriciaTrie.Trie.Node do
       [] -> :empty
       branches when length(branches) == 17 ->
         {:branch, branches}
-      [hp_k,v] ->
+      [hp_k, v] ->
         # extension or leaf node
         {prefix, is_leaf} = HexPrefix.decode(hp_k)
 

@@ -6,12 +6,12 @@ defmodule EVM.SubState do
 
   defstruct [
     suicide_list: [],
-    logs: [],
+    logs: <<>>,
     refund: 0
   ]
 
   @type suicide_list :: []
-  @type logs :: []
+  @type logs :: binary()
   @type refund :: EVM.Wei.t
 
   @type t :: %{

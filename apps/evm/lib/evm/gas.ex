@@ -8,6 +8,7 @@ defmodule EVM.Gas do
   alias MerklePatriciaTrie.Trie
 
   @type t :: EVM.val
+  @type gas_price :: EVM.Wei.t
 
   @doc """
   Returns the cost to execute the given ??.

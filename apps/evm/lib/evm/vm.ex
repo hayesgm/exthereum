@@ -13,11 +13,10 @@ defmodule EVM.VM do
   alias EVM.Instruction
   alias MerklePatriciaTrie.Trie
 
-  @type state :: Trie.t
   @type output :: <<>>
 
   @doc """
-  This function computes the Ξ function of the Section 9.4 of the Yellow Paper. This is the complete
+  This function computes the Ξ function Eq.(116) of the Section 9.4 of the Yellow Paper. This is the complete
   result of running a given program in the VM.
 
   ## Examples
@@ -38,7 +37,7 @@ defmodule EVM.VM do
       iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
       {nil, 5, [], [], 0, ""}
   """
-  @spec run(state, Gas.t, ExecEnv.t) :: {state, Gas.t, EVM.SubState.suicide_list, EVM.SubState.logs, EVM.SubState.refund, output}
+  @spec run(EVM.state, Gas.t, ExecEnv.t) :: {EVM.state, Gas.t, EVM.SubState.suicide_list, EVM.SubState.logs, EVM.SubState.refund, output}
   def run(state, gas, exec_env) do
     machine_state = %EVM.MachineState{gas: gas}
     sub_state = %EVM.SubState{}
@@ -66,7 +65,7 @@ defmodule EVM.VM do
       iex> EVM.VM.exec(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: []}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])})
       {%{}, %EVM.MachineState{active_words: 1, memory: <<0x08::256>>, pc: 13, gas: 5, stack: []}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])}, <<0x08::256>>}
   """
-  @spec exec(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, MachineState.t, SubState.t, ExecEnv.t, output}
+  @spec exec(EVM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.state, MachineState.t, SubState.t, ExecEnv.t, output}
   def exec(state, machine_state, sub_state, exec_env) do
     do_exec(state, machine_state, sub_state, exec_env, sub_state)
   end
@@ -95,7 +94,7 @@ defmodule EVM.VM do
       iex> EVM.VM.cycle(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
       {%{}, %EVM.MachineState{pc: 1, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])}}
   """
-  @spec cycle(state, MachineState.t, SubState.t, ExecEnv.t) :: {state, MachineState.t, SubState.t, ExecEnv.t}
+  @spec cycle(EVM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.state, MachineState.t, SubState.t, ExecEnv.t}
   def cycle(state, machine_state, sub_state, exec_env) do
     cost = Gas.cost(state, machine_state, exec_env)
 

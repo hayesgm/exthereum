@@ -50,13 +50,13 @@ defmodule RLP do
 		iex> RLP.decode(<<0xc7, 0xc0, 0xc1, 0xc0, 0xc3, 0xc0, 0xc1, 0xc0>>)
 		[[],[[]],[[],[[]]]]
 
-		iex> RLP.decode(<<248, 60, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247, 247>>)
+		iex> RLP.decode(<<248, 60, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192>>)
 		for _ <- 1..60, do: []
 	"""
 
 	@spec decode(String.t) :: __MODULE__.t
 	def decode(str) do
-		{res, _} = do_decode(str)
+    {res, _} = do_decode(str)
 
 		res
 	end
@@ -68,23 +68,24 @@ defmodule RLP do
 			"" -> nil
 			# Single byte
 			<<x,_::binary>> when x < @sentinel_single_byte -> {<<x>>, 1}
-			# Single byte array
-			<<x,rest::binary>> when x < @sentinel_single_byte_str_start ->
+			# Single byte string
+			<<x, rest::binary>> when x <= @sentinel_single_byte_str_start ->
 				str_len = x - @sentinel_single_byte
 
 				<<str::binary - size(str_len), _::binary>> = rest
 
 				{str, 1+str_len}
-			# Multi-byte array ->
-			<<x,rest::binary>> when x < @sentinel_multi_byte_str_start ->
+			# Multi-byte string ->
+			<<x, rest::binary>> when x < @sentinel_multi_byte_str_start ->
 				len = ( x - @sentinel_single_byte_str_start )
 				bit_len = len * 8
-				<<str_len::size(bit_len),rest_2::binary>> = rest
-				<<str::binary - size(str_len)>> = rest_2
+
+        <<str_len::size(bit_len),rest_2::binary>> = rest
+        <<str::binary - size(str_len), _::binary>> = rest_2
 
 				{str, 1+len+str_len}
 			# Single-byte list
-			<<x,rest::binary>> when x < @sentinel_single_byte_arr_start ->
+			<<x, rest::binary>> when x <= @sentinel_single_byte_arr_start ->
 				arr_len = x - @sentinel_multi_byte_str_start
 
 				items = take_items(<<rest::binary - size(arr_len)>>, arr_len)
@@ -93,11 +94,11 @@ defmodule RLP do
 					{items++[item], total_size + size}
 				end)
 			# Multi-byte list (TODO)
-			<<x,rest::binary>> ->
+			<<x, rest::binary>> ->
 				arr_len_len = x - @sentinel_single_byte_arr_start
 				<<encoded_len::binary - size(arr_len_len),rest_2::binary>>=rest
 
-				total_len = decode_variable_length(encoded_len)
+        total_len = decode_variable_length(encoded_len)
 
 				items = take_items(<<rest_2::binary - size(total_len)>>, total_len)
 
@@ -152,6 +153,12 @@ defmodule RLP do
 		iex> RLP.encode("\x0f")
 		<<0x0f>>
 
+    iex> RLP.encode(15)
+    <<0x0f>>
+
+    iex> RLP.encode(1024)
+    <<0x82, 0x04, 0x00>>
+
 		iex> RLP.encode("\x04\x00")
 		<<0x82, 0x04, 0x00>>
 
@@ -164,20 +171,21 @@ defmodule RLP do
 
 	@spec encode(__MODULE__.t) :: String.t
 	def encode(rlp) do
-		do_encode(rlp)
+    do_encode(rlp)
 	end
 
 	defp do_encode(rlp) do
 		case rlp do
+      i when is_integer(i) -> do_encode(:binary.encode_unsigned(i))
 			<<i::size(8)>> when i < @sentinel_single_byte -> <<i>>
 			str when is_binary(str) ->
-				encode_variable_length_string(@sentinel_single_byte, @max_single_byte_size, @sentinel_single_byte_str_start, byte_size(str)) <> str
+				encode_variable_length_item(@sentinel_single_byte, @max_single_byte_size, @sentinel_single_byte_str_start, byte_size(str)) <> str
 
 			lst when is_list(lst) ->
 				parts = for part <- lst, do: do_encode(part)
 				total_len = Enum.reduce(parts, 0, fn (p, acc) -> acc + byte_size(p) end)
 
-				base = encode_variable_length_string(@sentinel_multi_byte_str_start, @max_single_byte_size, @sentinel_single_byte_arr_start, total_len)
+				base = encode_variable_length_item(@sentinel_multi_byte_str_start, @max_single_byte_size, @sentinel_single_byte_arr_start, total_len)
 
 				Enum.reduce(parts, base, fn (part, res) ->
 					res <> part
@@ -186,9 +194,9 @@ defmodule RLP do
 	end
 
 	# Encodes a string either single-byte or multi-byte
-	defp encode_variable_length_string(single_byte_start, single_byte_max, multibyte_start, str_len) do
+	defp encode_variable_length_item(single_byte_start, single_byte_max, multibyte_start, str_len) do
 		if str_len <= single_byte_max do
-			<<single_byte_start+str_len>>
+      <<single_byte_start+str_len>>
 		else
       len_encoded = encode_variable_length(str_len)
 			<<multibyte_start + byte_size(len_encoded)>> <> len_encoded

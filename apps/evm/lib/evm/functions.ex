@@ -94,7 +94,7 @@ defmodule EVM.Functions do
       iex> EVM.Functions.is_exception_halt?(%{}, %EVM.MachineState{pc: 0, gas: 0xffff, stack: (for _ <- 1..1024, do: 0x0)}, %EVM.ExecEnv{machine_code: <<EVM.Instruction.encode(:push1)>>})
       {:halt, :stack_overflow}
   """
-  @spec is_exception_halt?(EVM.VM.state, MachineState.t, ExecEnv.t) :: :continue | {:halt, String.t}
+  @spec is_exception_halt?(EVM.state, MachineState.t, ExecEnv.t) :: :continue | {:halt, String.t}
   def is_exception_halt?(state, machine_state, exec_env) do
     instruction = MachineCode.current_instruction(machine_state, exec_env) |> Instruction.decode
     metadata = Instruction.metadata(instruction)
