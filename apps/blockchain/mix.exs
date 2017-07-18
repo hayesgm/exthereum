@@ -42,6 +42,7 @@ defmodule Blockchain.Mixfile do
       {:keccakf1600, "~> 2.0.0"},
       {:rlp, in_umbrella: true},
       {:merkle_patricia_trie, in_umbrella: true},
+      {:evm, in_umbrella: true},
     ]
   end
 end

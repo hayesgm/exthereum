@@ -23,21 +23,21 @@ defmodule EVM.VM do
 
       # Full program
       iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])})
-      {%{}, 5, [], [], 0, <<0x08::256>>}
+      {%{}, 5, %EVM.SubState{}, <<0x08::256>>}
 
       # Program with implicit stop
       iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :push1, 5, :add])})
-      {%{}, 5, [], [], 0, ""}
+      {%{}, 5, %EVM.SubState{}, ""}
 
       # Program with explicit stop
       iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:push1, 3, :stop])})
-      {%{}, 5, [], [], 0, ""}
+      {%{}, 5, %EVM.SubState{}, ""}
 
       # Program with exception halt
       iex> EVM.VM.run(%{}, 5, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
-      {nil, 5, [], [], 0, ""}
+      {nil, 5, %EVM.SubState{}, ""}
   """
-  @spec run(EVM.state, Gas.t, ExecEnv.t) :: {EVM.state, Gas.t, EVM.SubState.suicide_list, EVM.SubState.logs, EVM.SubState.refund, output}
+  @spec run(EVM.state, Gas.t, ExecEnv.t) :: {EVM.state, Gas.t, EVM.SubState.t, output}
   def run(state, gas, exec_env) do
     machine_state = %EVM.MachineState{gas: gas}
     sub_state = %EVM.SubState{}
@@ -45,7 +45,7 @@ defmodule EVM.VM do
     # Note, we drop exec env from return value
     {n_state, n_machine_state, n_sub_state, _n_exec_env, output} = exec(state, machine_state, sub_state, exec_env)
 
-    {n_state, n_machine_state.gas, n_sub_state.suicide_list, n_sub_state.logs, n_sub_state.refund, output}
+    {n_state, n_machine_state.gas, n_sub_state, output}
   end
 
   @doc """

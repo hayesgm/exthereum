@@ -24,7 +24,7 @@ defmodule MerklePatriciaTrie.Trie do
   @type key :: <<_::32>>
 
   @doc """
-  Contructs a new trie.
+  Contructs a new unitialized trie.
 
   ## Examples
 

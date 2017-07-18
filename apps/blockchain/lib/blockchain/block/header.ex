@@ -69,4 +69,8 @@ defmodule Blockchain.Block.Header do
     ]
   end
 
+  # TODO: is_before_homestead
+  def is_before_homestead?(h) do
+    false
+  end
 end
