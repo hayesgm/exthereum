@@ -70,7 +70,6 @@ defmodule Blockchain.Transaction do
   ## Examples
 
       # Sender address is nil
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> trx = %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5, r: 1, s: 2, v: 3}
       iex> MerklePatriciaTrie.Trie.new()
@@ -78,7 +77,6 @@ defmodule Blockchain.Transaction do
       {:invalid, :invalid_sender}
 
       # Sender account is nil
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
@@ -89,7 +87,6 @@ defmodule Blockchain.Transaction do
       {:invalid, :missing_account}
 
       # Has sender account, but nonce mismatch
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
@@ -101,7 +98,6 @@ defmodule Blockchain.Transaction do
       {:invalid, :nonce_mismatch}
 
       # Insufficient starting gas
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
@@ -113,7 +109,6 @@ defmodule Blockchain.Transaction do
       {:invalid, :insufficient_intrinsic_gas}
 
       # Insufficient endowment
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
@@ -124,7 +119,6 @@ defmodule Blockchain.Transaction do
       ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
       {:invalid, :insufficient_balance}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
@@ -137,7 +131,6 @@ defmodule Blockchain.Transaction do
 
       # TODO: gas above block limit
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
@@ -185,7 +178,6 @@ defmodule Blockchain.Transaction do
   ## Examples
 
       # Create contract
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> beneficiary = <<0x05::160>>
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
@@ -200,7 +192,6 @@ defmodule Blockchain.Transaction do
       [%Blockchain.Account{balance: 238727, nonce: 6}, %Blockchain.Account{balance: 161268}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
 
       # Message call
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> beneficiary = <<0x05::160>>
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
@@ -262,7 +253,6 @@ defmodule Blockchain.Transaction do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 1000, nonce: 7})
       iex> state = Blockchain.Transaction.begin_transaction(state, <<0x01::160>>, %Blockchain.Transaction{gas_price: 3, gas_limit: 100})
@@ -286,7 +276,6 @@ defmodule Blockchain.Transaction do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> trx = %Blockchain.Transaction{gas_price: 10, gas_limit: 30}
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 11})
