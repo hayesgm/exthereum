@@ -82,37 +82,55 @@ defmodule Blockchain.Transaction do
   not directly triggered by a transaction but coming from
   the execution of EVM-code.
 
-  # TODO: Add examples
+  # TODO: Add rick examples in `transaction_test.exs`
   # TODO: Add gas
+
+  ## Examples
+
+      # Create contract
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> beneficiary = <<0x05::160>>
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> contract_address = Blockchain.Contract.new_contract_address(sender, 6)
+      iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
+      iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100, to: <<>>, value: 5, init: machine_code}
+      ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 1000, nonce: 5})
+      ...> |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
+      ...> |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address])
+      [%Blockchain.Account{balance: 995, nonce: 6}, %Blockchain.Account{}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
+
+      # Message call
   """
-  @spec execute_transaction(EVM.VM.state, t) :: EVM.VM.state
-  def execute_transaction(state, trx) do
+  @spec execute_transaction(EVM.VM.state, t, Header.t) :: EVM.VM.state
+  def execute_transaction(state, trx, block_header) do
     {:ok, sender} = Blockchain.Transaction.Signature.sender(trx)
 
     state_0 = begin_transaction(state, sender, trx)
 
     # TODO: Deduct gas (g ≡ Tg − g0 from Eq.(71))
-    originator = trx.sender
+    originator = sender
     gas = trx.gas_limit # or something
     stack_depth = 0
     apparent_value = trx.value
-    block_header = nil # TODO:
 
     # TODO: Sender versus originator?
     {state_p, remaining_gas, sub_state} = case trx.to do
-      <<>> -> Blockchain.Contract.create_contract(state, sender, originator, gas, trx.gas_price, trx.value, trx.init, stack_depth) # Λ
+      <<>> -> Blockchain.Contract.create_contract(state_0, sender, originator, gas, trx.gas_price, trx.value, trx.init, stack_depth, block_header) # Λ
       recipient -> 
         # Note, we only want to take the first 3 items from the tuples, as designated Θ_3 in the literature
-        {state_, remaining_gas_, sub_state_, _output} = Blockchain.Contract.message_call(state, sender, originator, recipient, recipient, gas, trx.gas_price, trx.value, apparent_value, trx.data, stack_depth, block_header) # Θ_3
+        {state_, remaining_gas_, sub_state_, _output} = Blockchain.Contract.message_call(state_0, sender, originator, recipient, recipient, gas, trx.gas_price, trx.value, apparent_value, trx.data, stack_depth, block_header) # Θ_3
 
         {state_, remaining_gas_, sub_state_}
     end
 
     refund = calculate_refund(trx, remaining_gas, sub_state.refund)
 
-    state_after_gas = finalize_transaction_gas(state, sender, trx, refund, block_header)
+    state_after_gas = finalize_transaction_gas(state_p, sender, trx, refund, block_header)
 
-    state_after_suicides = Enum.reduce(state, sub_state.suicide_list, fn (address, state) ->
+    state_after_suicides = Enum.reduce(sub_state.suicide_list, state_after_gas, fn (address, state) ->
       Account.del_account(state, address)
     end)
 
@@ -136,16 +154,15 @@ defmodule Blockchain.Transaction do
 
       iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
-      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10, nonce: 7})
-      ...>   |> Blockchain.Account.put_account(<<0x02::160>>, %Blockchain.Account{balance: 5})
-      iex> state = Blockchain.Transaction.begin_transaction(state, <<0x01::160>>, %Blockchain.Transaction{to: <<0x02::160>>, value: 3})
-      iex> {Blockchain.Account.get_account(state, <<0x01::160>>), Blockchain.Account.get_account(state, <<0x02::160>>)}
-      {%Blockchain.Account{balance: 7, nonce: 8}, %Blockchain.Account{balance: 8}}
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 1000, nonce: 7})
+      iex> state = Blockchain.Transaction.begin_transaction(state, <<0x01::160>>, %Blockchain.Transaction{gas_price: 3, gas_limit: 100})
+      iex> Blockchain.Account.get_account(state, <<0x01::160>>)
+      %Blockchain.Account{balance: 700, nonce: 8}
   """
   @spec begin_transaction(EVM.state, EVM.address, t) :: EVM.VM.state
   def begin_transaction(state, sender, trx) do
     state
-      |> Account.transfer!(sender, trx.to, trx.value)
+      |> Account.dec_wei(sender, trx.gas_limit * trx.gas_price)
       |> Account.increment_nonce(sender)
   end
 

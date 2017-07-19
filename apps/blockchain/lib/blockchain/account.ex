@@ -238,7 +238,8 @@ defmodule Blockchain.Account do
   end
 
   @doc """
-  Simple helper function to adjust wei in an account. This
+  Simple helper function to adjust wei in an account. Wei may be
+  positive (to add wei) or negative (to remove it). This function
   will raise if we attempt to reduce wei in an account to less than zero.
 
   ## Examples
@@ -250,6 +251,22 @@ defmodule Blockchain.Account do
       ...> |> Blockchain.Account.add_wei(<<0x01::160>>, 13)
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{balance: 23}
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      iex> state
+      ...> |> Blockchain.Account.add_wei(<<0x01::160>>, -3)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      %Blockchain.Account{balance: 7}
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      iex> state
+      ...> |> Blockchain.Account.add_wei(<<0x01::160>>, -13)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      ** (RuntimeError) wei reduced to less than zero
   """
   @spec add_wei(EVM.state, EVM.address, EVM.Wei.t) :: EVM.state
   def add_wei(state, address, delta_wei) do
@@ -261,6 +278,40 @@ defmodule Blockchain.Account do
       %{acct | balance: updated_balance}
     end)
   end
+
+  @doc """
+  Even simpler helper function to adjust wei in an account negatively. Wei
+  may be positive (to subtract wei) or negative (to add it). This function
+  will raise if we attempt to reduce wei in an account to less than zero.
+
+  ## Examples
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      iex> state
+      ...> |> Blockchain.Account.dec_wei(<<0x01::160>>, 3)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      %Blockchain.Account{balance: 7}
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      iex> state
+      ...> |> Blockchain.Account.dec_wei(<<0x01::160>>, 13)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      ** (RuntimeError) wei reduced to less than zero
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
+      iex> state
+      ...> |> Blockchain.Account.dec_wei(<<0x01::160>>, -3)
+      ...> |> Blockchain.Account.get_account(<<0x01::160>>)
+      %Blockchain.Account{balance: 13}
+  """
+  @spec dec_wei(EVM.state, EVM.address, EVM.Wei.t) :: EVM.state
+  def dec_wei(state, address, delta_wei), do: add_wei(state, address, -1 * delta_wei)
 
   @doc """
   Helper function for transferring eth for one account to another.
