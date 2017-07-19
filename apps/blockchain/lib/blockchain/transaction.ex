@@ -110,11 +110,13 @@ defmodule Blockchain.Transaction do
 
     state_0 = begin_transaction(state, sender, trx)
 
+    # TODO: Test if transaction is valid
+
     # TODO: Deduct gas (g ≡ Tg − g0 from Eq.(71))
-    originator = sender
-    gas = trx.gas_limit # or something
-    stack_depth = 0
-    apparent_value = trx.value
+    originator = sender # sender and originator are the same for transaction execution
+    stack_depth = 0 # stack depth starts at zero for transaction execution
+    apparent_value = trx.value # apparent value is the full value for transaction execution
+    gas = trx.gas_limit # gas is equal to what was just subtracted from sender account for transaction execution
 
     # TODO: Sender versus originator?
     {state_p, remaining_gas, sub_state} = case trx.to do
