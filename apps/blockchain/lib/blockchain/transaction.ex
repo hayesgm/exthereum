@@ -5,18 +5,19 @@ defmodule Blockchain.Transaction do
   """
 
   alias Blockchain.Account
+  alias Blockchain.Block.Header
 
   defstruct [
-    nonce: nil,       # Tn
+    nonce: 0,         # Tn
     gas_price: nil,   # Tp
     gas_limit: nil,   # Tg
-    to: nil,          # Tt
+    to: <<>>,         # Tt
     value: 0,         # Tv
     v: nil,           # Tw
     r: nil,           # Tr
     s: nil,           # Ts
-    init: nil,        # Ti
-    data: nil,        # Td
+    init: <<>>,       # Ti
+    data: <<>>,       # Td
   ]
 
   @type t :: %{
@@ -62,14 +63,111 @@ defmodule Blockchain.Transaction do
   @doc """
   Validates the validity of a transaction that is required to be
   true before we're willing to execute a transaction. This is
-  specified in Section 6.2 of the Yellow Paper Eq.(66).
+  specified in Section 6.2 of the Yellow Paper Eq.(65) and Eq.(66).
 
-  # TODO: Add examples
-  # TODO: Implement
+  TODO: Add in ability to check against total gas_limit (boo!)
+
+  ## Examples
+
+      # Sender address is nil
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> trx = %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5, r: 1, s: 2, v: 3}
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      {:invalid, :invalid_sender}
+
+      # Sender account is nil
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      {:invalid, :missing_account}
+
+      # Has sender account, but nonce mismatch
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 4, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 1000, nonce: 5})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      {:invalid, :nonce_mismatch}
+
+      # Insufficient starting gas
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 1000, nonce: 5})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      {:invalid, :insufficient_intrinsic_gas}
+
+      # Insufficient endowment
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 100_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 1000, nonce: 5})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      {:invalid, :insufficient_balance}
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 100_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 100_001, nonce: 5})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      {:invalid, :insufficient_balance}
+
+      # TODO: gas above block limit
+
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 100_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 100_006, nonce: 5})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      :valid
   """
-  @spec is_valid?(t) :: boolean()
-  def is_valid?(trx) do
-    true
+  @spec is_valid?(EVM.state, t, Header.t) :: :valid | {:invalid, atom()}
+  def is_valid?(state, trx, block_header) do
+    g_0 = intrinsic_gas_cost(trx, block_header)
+    v_0 = trx.gas_limit * trx.gas_price + trx.value
+
+    case Blockchain.Transaction.Signature.sender(trx) do
+      {:error, _reason} -> {:invalid, :invalid_sender}
+      {:ok, sender_address} ->
+        case Account.get_account(state, sender_address) do
+          nil -> {:invalid, :missing_account}
+          sender_account ->
+            cond do
+              sender_account.nonce != trx.nonce -> {:invalid, :nonce_mismatch}
+              g_0 > trx.gas_limit -> {:invalid, :insufficient_intrinsic_gas}
+              v_0 > sender_account.balance -> {:invalid, :insufficient_balance}
+              # trx.gas_limit <= gas_limit(block_header)
+              true -> :valid
+            end
+        end
+    end
   end
 
   @doc """
@@ -82,8 +180,7 @@ defmodule Blockchain.Transaction do
   not directly triggered by a transaction but coming from
   the execution of EVM-code.
 
-  # TODO: Add rick examples in `transaction_test.exs`
-  # TODO: Add gas
+  # TODO: Add rich examples in `transaction_test.exs`
 
   ## Examples
 
@@ -94,15 +191,29 @@ defmodule Blockchain.Transaction do
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> contract_address = Blockchain.Contract.new_contract_address(sender, 6)
       iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
-      iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100, to: <<>>, value: 5, init: machine_code}
+      iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: <<>>, value: 5, init: machine_code}
       ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
       iex> MerklePatriciaTrie.Trie.new()
-      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 1000, nonce: 5})
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
       ...> |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
       ...> |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address])
-      [%Blockchain.Account{balance: 995, nonce: 6}, %Blockchain.Account{}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
+      [%Blockchain.Account{balance: 238727, nonce: 6}, %Blockchain.Account{balance: 161268}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
 
       # Message call
+      iex> MerklePatriciaTrie.DB.ETS.init()
+      iex> beneficiary = <<0x05::160>>
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> contract_address = Blockchain.Contract.new_contract_address(sender, 6)
+      iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
+      iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: contract_address, value: 5, init: machine_code}
+      ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
+      ...> |> Blockchain.Account.put_code(contract_address, machine_code)
+      ...> |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
+      ...> |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address])
+      [%Blockchain.Account{balance: 334727, nonce: 6}, %Blockchain.Account{balance: 65268}, %Blockchain.Account{balance: 5, code_hash: <<247, 60, 39, 205, 253, 89, 146, 143, 219, 173, 26, 213, 173, 221, 39, 44, 111, 59, 34, 217, 228, 91, 21, 167, 59, 107, 79, 33, 90, 183, 135, 213>>}]
   """
   @spec execute_transaction(EVM.VM.state, t, Header.t) :: EVM.VM.state
   def execute_transaction(state, trx, block_header) do
@@ -110,13 +221,10 @@ defmodule Blockchain.Transaction do
 
     state_0 = begin_transaction(state, sender, trx)
 
-    # TODO: Test if transaction is valid
-
-    # TODO: Deduct gas (g ≡ Tg − g0 from Eq.(71))
     originator = sender # sender and originator are the same for transaction execution
     stack_depth = 0 # stack depth starts at zero for transaction execution
     apparent_value = trx.value # apparent value is the full value for transaction execution
-    gas = trx.gas_limit # gas is equal to what was just subtracted from sender account for transaction execution
+    gas = trx.gas_limit - intrinsic_gas_cost(trx, block_header) # gas is equal to what was just subtracted from sender account less intrinsic gas cost
 
     # TODO: Sender versus originator?
     {state_p, remaining_gas, sub_state} = case trx.to do
@@ -128,7 +236,7 @@ defmodule Blockchain.Transaction do
         {state_, remaining_gas_, sub_state_}
     end
 
-    refund = calculate_refund(trx, remaining_gas, sub_state.refund)
+    refund = calculate_total_refund(trx, remaining_gas, sub_state.refund)
 
     state_after_gas = finalize_transaction_gas(state_p, sender, trx, refund, block_header)
 
@@ -191,10 +299,10 @@ defmodule Blockchain.Transaction do
       ]
   """
   @spec finalize_transaction_gas(EVM.state, EVM.address, t, EVM.Gas.t, Blockchain.Block.Header.t) :: EVM.state
-  def finalize_transaction_gas(state, sender, trx, refund, block_header) do
+  def finalize_transaction_gas(state, sender, trx, total_refund, block_header) do
     state
-      |> Account.add_wei(sender, refund * trx.gas_price) # Eq.(74)
-      |> Account.add_wei(block_header.beneficiary, (trx.gas_limit - refund) * trx.gas_price) # Eq.(75)
+      |> Account.add_wei(sender, total_refund * trx.gas_price) # Eq.(74)
+      |> Account.add_wei(block_header.beneficiary, (trx.gas_limit - total_refund) * trx.gas_price) # Eq.(75)
   end
 
   @doc """
@@ -207,24 +315,54 @@ defmodule Blockchain.Transaction do
 
   ## Examples
 
-      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 5)
+      iex> Blockchain.Transaction.calculate_total_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 5)
       15
 
-      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 99)
+      iex> Blockchain.Transaction.calculate_total_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 99)
       55
 
-      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 0)
+      iex> Blockchain.Transaction.calculate_total_refund(%Blockchain.Transaction{gas_limit: 100}, 10, 0)
       10
 
-      iex> Blockchain.Transaction.calculate_refund(%Blockchain.Transaction{gas_limit: 100}, 11, 99)
+      iex> Blockchain.Transaction.calculate_total_refund(%Blockchain.Transaction{gas_limit: 100}, 11, 99)
       55
   """
-  @spec calculate_refund(t, EVM.Gas.t, EVM.SubState.refund) :: EVM.Gas.t
-  def calculate_refund(trx, remaining_gas, refund) do
+  @spec calculate_total_refund(t, EVM.Gas.t, EVM.SubState.refund) :: EVM.Gas.t
+  def calculate_total_refund(trx, remaining_gas, refund) do
     # TODO: Add a math helper, finally
     max_refund = round( :math.floor( ( trx.gas_limit - remaining_gas ) / 2 ) )
 
     remaining_gas + min(max_refund, refund)
   end
 
+  @doc """
+  Defines the "intrinsic gas cost," that is the amount of gas
+  this transaction requires to be paid prior to execution. This
+  is defined as g_0 in Eq.(62), Eq.(63) and Eq.(64) of the
+  Yellow Paper.
+
+  ## Examples
+
+      iex> Blockchain.Transaction.intrinsic_gas_cost(%Blockchain.Transaction{to: <<1::160>>, init: <<>>, data: <<1, 2, 0, 3>>}, %Blockchain.Block.Header{number: 5})
+      3 * 68 + 4 + 21000
+
+      iex> Blockchain.Transaction.intrinsic_gas_cost(%Blockchain.Transaction{to: <<1::160>>, init: <<>>, data: <<1, 2, 0, 3>>}, %Blockchain.Block.Header{number: 5_000_000})
+      3 * 68 + 4 + 21000
+
+      iex> Blockchain.Transaction.intrinsic_gas_cost(%Blockchain.Transaction{to: <<1::160>>, init: <<>>, data: <<>>}, %Blockchain.Block.Header{number: 5_000_000})
+      21000
+
+      iex> Blockchain.Transaction.intrinsic_gas_cost(%Blockchain.Transaction{to: <<>>, init: <<1, 2, 0, 3>>, data: <<>>}, %Blockchain.Block.Header{number: 5})
+      3 * 68 + 4 + 21000
+
+      iex> Blockchain.Transaction.intrinsic_gas_cost(%Blockchain.Transaction{to: <<>>, init: <<1, 2, 0, 3>>, data: <<>>}, %Blockchain.Block.Header{number: 5_000_000})
+      3 * 68 + 4 + 32000 + 21000
+  """
+  @spec intrinsic_gas_cost(t, Header.t) :: EVM.Gas.t
+  def intrinsic_gas_cost(trx, block_header) do
+    EVM.Gas.g_txdata(trx.init) +
+    EVM.Gas.g_txdata(trx.data) +
+    ( if trx.to == <<>> and Header.is_after_homestead?(block_header), do: EVM.Gas.g_txcreate(), else: 0 ) +
+    EVM.Gas.g_transaction()
+  end
 end

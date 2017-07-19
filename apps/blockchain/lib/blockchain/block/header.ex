@@ -3,6 +3,9 @@ defmodule Blockchain.Block.Header do
   This structure codifies the header of a block in the blockchain.
   """
 
+  # The start of the Homestead block, as defined in Eq.(13) of the Yellow Paper (N_H)
+  @homestead 1_150_000
+
   defstruct [
     parent_hash: nil,       # Hp P(BH)Hr
     ommers_hash: nil,       # Ho KEC(RLP(L∗H(BU)))
@@ -39,6 +42,10 @@ defmodule Blockchain.Block.Header do
     nonce: <<_::64>>, # TODO: 64-bit hash?
   }
 
+  @doc "Returns the block that defines the start of Homestead"
+  @spec homestead() :: integer()
+  def homestead, do: @homestead
+
   @doc """
   This functions encode a header into a value that can
   be RLP encoded. This is defined as L_H Eq.(32) in the Yellow Paper.
@@ -69,8 +76,39 @@ defmodule Blockchain.Block.Header do
     ]
   end
 
-  # TODO: is_before_homestead
+  @doc """
+  Returns true if a given block is before the
+  Homestead block.
+
+  ## Examples
+
+      iex> Blockchain.Block.Header.is_before_homestead?(%Blockchain.Block.Header{number: 5})
+      true
+
+      iex> Blockchain.Block.Header.is_before_homestead?(%Blockchain.Block.Header{number: 5_000_000})
+      false
+
+      iex> Blockchain.Block.Header.is_before_homestead?(%Blockchain.Block.Header{number: 1_150_000})
+      false
+  """
   def is_before_homestead?(h) do
-    false
+    h.number < @homestead
   end
+
+  @doc """
+  Returns true if a given block is at or after the
+  Homestead block.
+
+  ## Examples
+
+      iex> Blockchain.Block.Header.is_after_homestead?(%Blockchain.Block.Header{number: 5})
+      false
+
+      iex> Blockchain.Block.Header.is_after_homestead?(%Blockchain.Block.Header{number: 5_000_000})
+      true
+
+      iex> Blockchain.Block.Header.is_after_homestead?(%Blockchain.Block.Header{number: 1_150_000})
+      true
+  """
+  def is_after_homestead?(h), do: not is_before_homestead?(h)
 end

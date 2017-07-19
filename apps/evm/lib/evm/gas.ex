@@ -24,4 +24,42 @@ defmodule EVM.Gas do
     0
   end
 
+  @doc """
+  Returns the gas cost for G_txdata{zero, nonzero} as defined in
+  Appendix G (Fee Schedule) of the Yellow Paper.
+
+  This implements `g_txdatazero` and `g_txdatanonzero`
+
+  ## Examples
+
+      iex> EVM.Gas.g_txdata(<<1, 2, 3, 0, 4, 5>>)
+      5 * 68 + 4
+
+      iex> EVM.Gas.g_txdata(<<0>>)
+      4
+
+      iex> EVM.Gas.g_txdata(<<0, 0>>)
+      8
+
+      iex> EVM.Gas.g_txdata(<<>>)
+      0
+  """
+  @spec g_txdata(binary()) :: t
+  def g_txdata(data) do
+    for <<byte <- data>> do
+      case byte do
+        0 -> 4
+        _ -> 68
+      end
+    end |> Enum.sum
+  end
+
+  @doc "Paid by all contract-creating transactions after the Homestead transition."
+  @spec g_txcreate() :: t
+  def g_txcreate, do: 32000
+
+  @doc "Paid for every transaction."
+  @spec g_transaction() :: t
+  def g_transaction, do: 21000
+
 end

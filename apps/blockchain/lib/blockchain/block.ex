@@ -20,9 +20,6 @@ defmodule Blockchain.Block do
     ommers: [Header.t],
   }
 
-  # The start of the Homestead block, as defined in Eq.(13) of the Yellow Paper (N_H)
-  @homestead 1_150_000
-
   @doc """
   Encodes a block such that it can be represented in
   RLP encoding. This is defined as L_B Eq.(33) in the Yellow Paper.
