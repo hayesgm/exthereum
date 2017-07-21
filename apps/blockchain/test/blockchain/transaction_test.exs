@@ -7,6 +7,7 @@ defmodule Blockchain.TransactionTest do
 
     :ok
   end
+
   describe "when handling transactions" do
 
     test "for a transaction with a stop" do

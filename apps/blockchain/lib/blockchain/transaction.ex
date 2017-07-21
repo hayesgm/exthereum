@@ -1,7 +1,8 @@
 defmodule Blockchain.Transaction do
   @moduledoc """
-  The module encode the transaction object, defined in Section 4.3
-  of the Yellow Paper (http://gavwood.com/Paper.pdf).
+  This module encodes the transaction object, defined in Section 4.3
+  of the Yellow Paper (http://gavwood.com/Paper.pdf). We are focused
+  on implementing 𝛶, as defined in Eq.(1).
   """
 
   alias Blockchain.Account
@@ -208,6 +209,7 @@ defmodule Blockchain.Transaction do
   """
   @spec execute_transaction(EVM.VM.state, t, Header.t) :: EVM.VM.state
   def execute_transaction(state, trx, block_header) do
+    # TODO: Check transaction validity.
     {:ok, sender} = Blockchain.Transaction.Signature.sender(trx)
 
     state_0 = begin_transaction(state, sender, trx)

@@ -17,9 +17,9 @@ defmodule Blockchain.Block.Header do
     difficulty: nil,        # Hd
     number: nil,            # Hi
     gas_limit: nil,         # Hl
-    gas_used: nil,          # Hg
+    gas_used: 0,            # Hg
     timestamp: nil,         # Hs
-    extra_data: nil,        # Hx
+    extra_data: <<>>,       # Hx
     mix_hash: nil,          # Hm
     nonce: nil,             # Hn
   ]
