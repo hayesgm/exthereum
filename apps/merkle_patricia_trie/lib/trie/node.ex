@@ -47,7 +47,7 @@ defmodule MerklePatriciaTrie.Trie.Node do
   end
 
   defp encode_node_type(:empty) do
-    []
+    <<>>
   end
 
   @doc """
@@ -56,13 +56,15 @@ defmodule MerklePatriciaTrie.Trie.Node do
 
   ## Examples
 
-  iex> decode_trie(trie)
+  iex> MerklePatriciaTrie.Trie.Node.decode_trie(trie)
   {:leaf, [5,6,7], "ok"}
   """
   @spec decode_trie(Trie.Tree.t) :: trie_node
   def decode_trie(trie) do
     case Storage.get_node(trie) do
-      [] -> :empty
+      nil -> :empty # TODO: Should this be here, either?
+      [] -> :empty # TODO: I think we should remove this.
+      <<>> -> :empty
       branches when length(branches) == 17 ->
         {:branch, branches}
       [hp_k, v] ->
