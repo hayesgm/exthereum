@@ -90,7 +90,12 @@ defmodule Blockchain.Account do
       code_hash
     ] = rlp
 
-    %Blockchain.Account{nonce: :binary.decode_unsigned(nonce), balance: :binary.decode_unsigned(balance), storage_root: storage_root, code_hash: code_hash}
+    %Blockchain.Account{
+      nonce: RLP.decode_unsigned(nonce),
+      balance: RLP.decode_unsigned(balance),
+      storage_root: storage_root,
+      code_hash: code_hash
+    }
   end
 
   @doc """

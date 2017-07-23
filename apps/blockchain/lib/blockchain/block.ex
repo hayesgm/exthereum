@@ -7,6 +7,8 @@ defmodule Blockchain.Block do
 
   alias Blockchain.Block.Header
   alias Blockchain.Transaction
+  alias Blockchain.Transaction.Receipt
+  alias MerklePatriciaTrie.Trie
 
   # Defined in Eq.(18)
   defstruct [
@@ -42,7 +44,7 @@ defmodule Blockchain.Block do
     ]
 
     iex> Blockchain.Block.serialize(%Blockchain.Block{})
-    [[nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, nil, "", nil, nil], [], []]
+    [[nil, nil, nil, "", "", "", "", nil, nil, nil, 0, nil, "", nil, nil], [], []]
   """
   @spec serialize(t) :: RLP.t
   def serialize(block) do
@@ -51,6 +53,131 @@ defmodule Blockchain.Block do
       Enum.map(block.transactions, &Transaction.serialize/1),
       Enum.map(block.ommers, &Header.serialize/1),
     ]
+  end
+
+  @doc """
+  Returns the total number of transactions
+  included in a block. This is based on the
+  transaction list for a given block.
+
+  ## Examples
+
+      iex> Blockchain.Block.get_transaction_count(%Blockchain.Block{transactions: [%Blockchain.Transaction{}, %Blockchain.Transaction{}]})
+      2
+  """
+  @spec get_transaction_count(t) :: number()
+  def get_transaction_count(block), do: Enum.count(block.transactions)
+
+  @doc """
+  Returns a given receipt from a block. This is
+  based on the receipts root where all receipts
+  are stored for the given block.
+
+  ## Examples
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.put_receipt(6, %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}, :ets)
+      ...> |> Blockchain.Block.put_receipt(7, %Blockchain.Transaction.Receipt{state: <<4, 5, 6>>, cumulative_gas: 11, bloom_filter: <<5, 6, 7>>, logs: "hi dad"}, :ets)
+      ...> |> Blockchain.Block.get_receipt(6, :ets)
+      %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.put_receipt(6, %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}, :ets)
+      ...> |> Blockchain.Block.get_receipt(7, :ets)
+      nil
+  """
+  @spec get_receipt(t, number(), atom()) :: Receipt.t
+  def get_receipt(block, i, trie_db) do
+    serialized_receipt =
+      Trie.new(root_hash: block.header.receipts_root, trie_db: trie_db)
+      |> Trie.get(RLP.encode(i))
+
+    case serialized_receipt do
+      nil -> nil
+      _ -> Receipt.deserialize(serialized_receipt |> RLP.decode)
+    end
+  end
+
+  @doc """
+  Returns a given transaction from a block. This is
+  based on the transactions root where all transactions
+  are stored for the given block.
+
+  ## Examples
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.put_transaction(6, %Blockchain.Transaction{nonce: 1, v: 1, r: 2, s: 3}, :ets)
+      ...> |> Blockchain.Block.put_transaction(7, %Blockchain.Transaction{nonce: 2, v: 1, r: 2, s: 3}, :ets)
+      ...> |> Blockchain.Block.get_transaction(6, :ets)
+      %Blockchain.Transaction{nonce: 1, v: 1, r: 2, s: 3}
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.put_transaction(6, %Blockchain.Transaction{data: "", gas_limit: 100000, gas_price: 3, init: <<96, 3, 96, 5, 1, 96, 0, 82, 96, 0, 96, 32, 243>>, nonce: 5, r: 110274197540583527170567040609004947678532096020311055824363076718114581104395, s: 15165203061950746568488278734700551064641299899120962819352765267479743108366, to: "", v: 27, value: 5}, :ets)
+      ...> |> Blockchain.Block.get_transaction(6, :ets)
+      %Blockchain.Transaction{data: "", gas_limit: 100000, gas_price: 3, init: <<96, 3, 96, 5, 1, 96, 0, 82, 96, 0, 96, 32, 243>>, nonce: 5, r: 110274197540583527170567040609004947678532096020311055824363076718114581104395, s: 15165203061950746568488278734700551064641299899120962819352765267479743108366, to: "", v: 27, value: 5}
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.put_transaction(6, %Blockchain.Transaction{nonce: 1, v: 1, r: 2, s: 3}, :ets)
+      ...> |> Blockchain.Block.get_transaction(7, :ets)
+      nil
+  """
+  @spec get_transaction(t, number(), atom()) :: Transaction.t
+  def get_transaction(block, i, trie_db) do
+    serialized_transaction =
+      Trie.new(root_hash: block.header.transactions_root, trie_db: trie_db)
+      |> Trie.get(RLP.encode(i))
+
+    case serialized_transaction do
+      nil -> nil
+      _ -> Transaction.deserialize(serialized_transaction |> RLP.decode)
+    end
+  end
+
+  @doc """
+  Returns the cumulative gas used by a block based on the
+  listed transactions. This is defined in largely in the
+  note after Eq.(66) referenced as l(B_R)_u, or the last
+  receipt's cumulative gas.
+
+  The receipts aren't directly included in the block, so
+  we'll need to pull it from the receipts root.
+
+  Note: this will case if we do not have a receipt for
+  the most recent transaction.
+
+  ## Examples
+
+      iex> %Blockchain.Block{transactions: [1,2,3,4,5,6,7]}
+      ...> |> Blockchain.Block.put_receipt(6, %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}, :ets)
+      ...> |> Blockchain.Block.put_receipt(7, %Blockchain.Transaction.Receipt{state: <<4, 5, 6>>, cumulative_gas: 11, bloom_filter: <<5, 6, 7>>, logs: "hi dad"}, :ets)
+      ...> |> Blockchain.Block.get_cumulative_gas(:ets)
+      11
+
+      iex> %Blockchain.Block{transactions: [1,2,3,4,5,6]}
+      ...> |> Blockchain.Block.put_receipt(6, %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}, :ets)
+      ...> |> Blockchain.Block.put_receipt(7, %Blockchain.Transaction.Receipt{state: <<4, 5, 6>>, cumulative_gas: 11, bloom_filter: <<5, 6, 7>>, logs: "hi dad"}, :ets)
+      ...> |> Blockchain.Block.get_cumulative_gas(:ets)
+      10
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.get_cumulative_gas(:ets)
+      0
+
+      iex> %Blockchain.Block{transactions: [1,2,3,4,5,6,7,8]}
+      ...> |> Blockchain.Block.put_receipt(6, %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}, :ets)
+      ...> |> Blockchain.Block.put_receipt(7, %Blockchain.Transaction.Receipt{state: <<4, 5, 6>>, cumulative_gas: 11, bloom_filter: <<5, 6, 7>>, logs: "hi dad"}, :ets)
+      ...> |> Blockchain.Block.get_cumulative_gas(:ets)
+      ** (RuntimeError) cannot find receipt
+  """
+  @spec get_cumulative_gas(t, atom()) :: EVM.Gas.t
+  def get_cumulative_gas(block=%__MODULE__{}, trie_db) do
+    case get_transaction_count(block) do
+      0 -> 0
+      i -> case get_receipt(block, i, trie_db) do
+        nil -> raise "cannot find receipt"
+        receipt -> receipt.cumulative_gas
+      end
+    end
   end
 
   # TODO: gen_genesis_block
@@ -68,15 +195,16 @@ defmodule Blockchain.Block do
   ## Examples
 
       iex> %Blockchain.Block{header: %Blockchain.Block.Header{number: 100_000, difficulty: 131072, timestamp: 5000, gas_limit: 500_000}}
-      ...> |> Blockchain.Block.gen_child_block(timestamp: 5010)
-      %Blockchain.Block{header: %Blockchain.Block.Header{number: 100_001, difficulty: 131136, timestamp: 5010, gas_limit: 500_000}}
+      ...> |> Blockchain.Block.gen_child_block(timestamp: 5010, extra_data: "hi")
+      %Blockchain.Block{header: %Blockchain.Block.Header{number: 100_001, difficulty: 131136, timestamp: 5010, gas_limit: 500_000, extra_data: "hi"}}
   """
   @spec gen_child_block(t, integer() | nil) :: t
   def gen_child_block(parent_block, opts \\ []) do
     timestamp = opts[:timestamp] || System.system_time(:second)
     gas_limit = opts[:gas_limit] || parent_block.header.gas_limit
+    extra_data = opts[:extra_data] || <<>>
 
-    %Blockchain.Block{header: %Blockchain.Block.Header{timestamp: timestamp}}
+    %Blockchain.Block{header: %Blockchain.Block.Header{timestamp: timestamp, extra_data: extra_data}}
     |> set_block_number(parent_block)
     |> set_block_difficulty(parent_block)
     |> set_block_gas_limit(parent_block, gas_limit)
@@ -92,7 +220,7 @@ defmodule Blockchain.Block do
       %Blockchain.Block{header: %Blockchain.Block.Header{number: 33, extra_data: "hello"}}
   """
   @spec set_block_number(t, t) :: integer()
-  def set_block_number(block=%Blockchain.Block{header: header}, parent_block=%Blockchain.Block{header: %Blockchain.Block.Header{number: parent_number}}) do
+  def set_block_number(block=%Blockchain.Block{header: header}, %Blockchain.Block{header: %Blockchain.Block.Header{number: parent_number}}) do
     %{block | header: %{header | number: parent_number + 1}}
   end
 
@@ -200,6 +328,53 @@ defmodule Blockchain.Block do
   end
 
   @doc """
+  Attaches an ommer to a block. We do no validation
+  at this stage.
+
+  ## Examples
+
+      iex> Blockchain.Block.add_ommers_to_block(%Blockchain.Block{}, [%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}], :ets)
+      %Blockchain.Block{ommers: [%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}], header: %Blockchain.Block.Header{ommers_hash: <<220, 70, 182, 176, 89, 74, 86, 110, 155, 194, 68, 71, 165, 248, 240, 226, 128, 12, 39, 243, 85, 43, 143, 95, 187, 92, 97, 129, 15, 139, 238, 215>>}}
+  """
+  @spec add_ommers_to_block(t, [Header.t], atom()) :: t
+  def add_ommers_to_block(block, ommers, trie_db) do
+    do_add_ommers_to_block(block, ommers, trie_db, Enum.count(block.ommers))
+  end
+
+  defp do_add_ommers_to_block(block, [], _, _), do: block
+  defp do_add_ommers_to_block(block, [ommer|ommers], trie_db, i) do
+    updated_ommers_hash =
+      Trie.new(root_hash: block.header.ommers_hash, trie_db: trie_db)
+      |> Trie.update(RLP.encode(i), Header.serialize(ommer) |> RLP.encode)
+
+    updated_block = %{block | ommers: block.ommers ++ [ommer], header: %{block.header | ommers_hash: updated_ommers_hash.root_hash}}
+
+    do_add_ommers_to_block(updated_block, ommers, trie_db, i + 1)
+  end
+
+  @doc """
+  Gets an ommer for a given block, based on the ommers_hash.
+
+  ## Examples
+
+      iex> %Blockchain.Block{}
+      ...> |> Blockchain.Block.add_ommers_to_block([%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}], :ets)
+      ...> |> Blockchain.Block.get_ommer(0, :ets)
+      %Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}
+  """
+  @spec get_ommer(t, number(), atom()) :: Header.t
+  def get_ommer(block, i, trie_db) do
+    serialized_ommer =
+      Trie.new(root_hash: block.header.ommers_hash, trie_db: trie_db)
+      |> Trie.get(RLP.encode(i))
+
+    case serialized_ommer do
+      nil -> nil
+      _ -> Header.deserialize(serialized_ommer |> RLP.decode)
+    end
+  end
+
+  @doc """
   Function to determine if the gas limit set is valid. The miner gets to
   specify a gas limit, so long as it's in range. This allows about a 0.1% change
   per block.
@@ -236,11 +411,35 @@ defmodule Blockchain.Block do
   Determines whether or not a block is valid. This is
   defined in Eq.(29) of the Yellow Paper.
 
-  # TODO: This is going to be pretty serious,
-  since it will involve us literally running the block.
+  Note, this is a serious intensive operation, and not
+  faint of heart (since we need to run all transaction
+  in the block to validate the block).
+
+  # TODO: Handle parent blocks better.
+  # TODO: Better test cases and error handling
+
+  ## Examples
+
+      # iex> block = %Blockchain.Block{number: 5}
+      # iex> Blockchain.Block.is_valid?(block, block, :ets)
+      # {:errors, [:abc]}
   """
-  @spec block_valid?(t) :: boolean()
-  def block_valid?(block), do: true
+  @spec is_valid?(t, t, atom()) :: :valid | {:errors, [atom()]}
+  def is_valid?(block, parent_block, trie_db) do
+    child_block =
+      gen_child_block(parent_block, timestamp: block.header.timestamp, gas_limit: block.header.gas_limit, extra_data: block.header.extra_data)
+      |> add_transactions_to_block(block.transactions, trie_db)
+      |> add_ommers_to_block(block.ommers, trie_db)
+
+    # The following checks Holistic Validity, as defined in Eq.(29)
+    errors = []
+      ++ if child_block.state_root == block.state_root, do: [], else: [:state_root_mismatch]
+      ++ if child_block.ommers_hash == block.ommers_hash, do: [], else: [:ommers_hash_mismatch]
+      ++ if child_block.transactions_root == block.transactions_root, do: [], else: [:transactions_root_mismatch]
+      ++ if child_block.receipts_root == block.receipts_root, do: [], else: [:receipts_root_mismatch]
+
+    if errors == [], do: :valid, else: {:errors, errors}
+  end
 
   @doc """
   For a given block, this will add the given transactions to its
@@ -270,27 +469,96 @@ defmodule Blockchain.Block do
       ...>           |> Blockchain.Block.add_transactions_to_block([trx], :ets)
       iex> Enum.count(block.transactions)
       1
+      iex> Blockchain.Block.get_receipt(block, 0, :ets)
+      %Blockchain.Transaction.Receipt{bloom_filter: "", cumulative_gas: 53756, logs: "", state: block.header.state_root}
+      iex> Blockchain.Block.get_transaction(block, 0, :ets)
+      %Blockchain.Transaction{data: "", gas_limit: 100000, gas_price: 3, init: <<96, 3, 96, 5, 1, 96, 0, 82, 96, 0, 96, 32, 243>>, nonce: 5, r: 110274197540583527170567040609004947678532096020311055824363076718114581104395, s: 15165203061950746568488278734700551064641299899120962819352765267479743108366, to: "", v: 27, value: 5}
       iex> MerklePatriciaTrie.Trie.new(root_hash: block.header.state_root)
       ...> |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address])
       [%Blockchain.Account{balance: 238727, nonce: 6}, %Blockchain.Account{balance: 161268}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
-
   """
   @spec add_transactions_to_block(t, [Transaction.t], atom()) :: t
   def add_transactions_to_block(block, transactions, trie_db) do
-    do_add_transactions_to_block(block, transactions, trie_db)
+    trx_count = get_transaction_count(block)
+
+    do_add_transactions_to_block(block, transactions, trie_db, trx_count)
   end
 
-  defp do_add_transactions_to_block(block, [], _), do: block
-  defp do_add_transactions_to_block(block=%__MODULE__{header: header}, [trx|transactions], trie_db) do
+  @spec do_add_transactions_to_block(t, [Transaction.t], atom(), number()) :: t
+  defp do_add_transactions_to_block(block, [], _, _), do: block
+  defp do_add_transactions_to_block(block=%__MODULE__{header: header}, [trx|transactions], trie_db, trx_count) do
     state = MerklePatriciaTrie.Trie.new(db: trie_db, root_hash: header.state_root)
-    new_state = Blockchain.Transaction.execute_transaction(state, trx, header)
-    total_transactions = block.transactions ++ [trx]
-    updated_header = %{header | state_root: new_state.root_hash}
-    # TODO: gas, etc?
+    # TODO: How do we deal with invalid transactions
+    {new_state, gas_used, logs} = Blockchain.Transaction.execute_transaction(state, trx, header)
 
-    updated_block = %{block | header: updated_header, transactions: total_transactions}
+    total_gas_used = block.header.gas_used + gas_used
 
-    do_add_transactions_to_block(updated_block, transactions, trie_db)
+    receipt = %Blockchain.Transaction.Receipt{state: new_state.root_hash, cumulative_gas: total_gas_used, logs: logs} # TODO: Add bloom filter
+
+    updated_block =
+      block
+      |> put_state(new_state)
+      |> put_gas_used(total_gas_used)
+      |> put_receipt(trx_count, receipt, trie_db)
+      |> put_transaction(trx_count, trx, trie_db)
+
+    do_add_transactions_to_block(updated_block, transactions, trie_db, trx_count + 1)
+  end
+
+  # Updates a block to have a new state root given a state object
+  @spec put_state(t, EVM.state) :: t
+  defp put_state(block=%__MODULE__{header: header}, new_state) do
+    %{block | header: %{header | state_root: new_state.root_hash}}
+  end
+
+  # Updates a block to have total gas used set in the header
+  @spec put_gas_used(t, EVM.Gas.t) :: t
+  defp put_gas_used(block=%__MODULE__{header: header}, gas_used) do
+    %{block | header: %{header | gas_used: gas_used}}
+  end
+
+  @doc """
+  Updates a block by adding a receipt to the list of receipts
+  at position `i`.
+
+  ## Examples
+
+      iex> block = Blockchain.Block.put_receipt(%Blockchain.Block{}, 5, %Blockchain.Transaction.Receipt{state: <<1, 2, 3>>, cumulative_gas: 10, bloom_filter: <<2, 3, 4>>, logs: "hi mom"}, :ets)
+      iex> MerklePatriciaTrie.Trie.new(root_hash: block.header.receipts_root, trie_db: :ets)
+      ...> |> MerklePatriciaTrie.Trie.Inspector.all_values()
+      [{<<5>>, <<208, 131, 1, 2, 3, 10, 131, 2, 3, 4, 134, 104, 105, 32, 109, 111, 109>>}]
+  """
+  @spec put_receipt(t, number(), Receipt.t, atom()) :: t
+  def put_receipt(block, i, receipt, trie_db) do
+    updated_receipts_root =
+      Trie.new(root_hash: block.header.receipts_root, trie_db: trie_db)
+      |> Trie.update(RLP.encode(i), Receipt.serialize(receipt) |> RLP.encode)
+
+    %{block | header: %{block.header | receipts_root: updated_receipts_root.root_hash}}
+  end
+
+  @doc """
+  Updates a block by adding a transaction to the list of transactions
+  and updating the transactions_root in the header at position `i`, which
+  should be equilvant to the current number of transactions.
+
+  ## Examples
+
+      iex> block = Blockchain.Block.put_transaction(%Blockchain.Block{}, 0, %Blockchain.Transaction{nonce: 1, v: 2, r: 3, s: 4}, :ets)
+      iex> block.transactions
+      [%Blockchain.Transaction{nonce: 1, v: 2, r: 3, s: 4}]
+      iex> MerklePatriciaTrie.Trie.new(root_hash: block.header.transactions_root, trie_db: :ets)
+      ...> |> MerklePatriciaTrie.Trie.Inspector.all_values()
+      [{<<0>>, <<201, 1, 0, 0, 128, 0, 128, 2, 3, 4>>}]
+  """
+  @spec put_transaction(t, number(), Transaction.t, atom()) :: t
+  def put_transaction(block, i, trx, trie_db) do
+    total_transactions =  block.transactions ++ [trx]
+    updated_transactions_root =
+      Trie.new(root_hash: block.header.transactions_root, trie_db: trie_db)
+      |> Trie.update(RLP.encode(i), Transaction.serialize(trx) |> RLP.encode)
+
+    %{block | transactions: total_transactions, header: %{block.header | transactions_root: updated_transactions_root.root_hash}}
   end
 
 end

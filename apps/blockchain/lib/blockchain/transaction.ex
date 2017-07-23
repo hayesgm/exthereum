@@ -10,8 +10,8 @@ defmodule Blockchain.Transaction do
 
   defstruct [
     nonce: 0,         # Tn
-    gas_price: nil,   # Tp
-    gas_limit: nil,   # Tg
+    gas_price: 0,     # Tp
+    gas_limit: 0,     # Tg
     to: <<>>,         # Tt
     value: 0,         # Tv
     v: nil,           # Tw
@@ -62,6 +62,49 @@ defmodule Blockchain.Transaction do
   end
 
   @doc """
+  Decodes a transaction that was previously encoded
+  using `Transaction.serialize/1`. Note, this is the
+  inverse of L_T Eq.(14) defined in the Yellow Paper.
+
+  ## Examples
+
+      iex> Blockchain.Transaction.deserialize([5, 6, 7, <<1::160>>, 8, "hi", 27, 9, 10])
+      %Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}
+
+      iex> Blockchain.Transaction.deserialize([5, 6, 7, <<>>, 8, <<1, 2, 3>>, 27, 9, 10])
+      %Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<>>, value: 8, v: 27, r: 9, s: 10, init: <<1, 2, 3>>}
+  """
+  @spec deserialize(RLP.t) :: t
+  def deserialize(rlp) do
+    [
+      nonce,
+      gas_price,
+      gas_limit,
+      to,
+      value,
+      init_or_data,
+      v,
+      r,
+      s
+    ] = rlp
+
+    {init, data} = if to == <<>>, do: {init_or_data, <<>>}, else: {<<>>, init_or_data}
+
+    %Blockchain.Transaction{
+      nonce: RLP.decode_unsigned(nonce),
+      gas_price: RLP.decode_unsigned(gas_price),
+      gas_limit: RLP.decode_unsigned(gas_limit),
+      to: to,
+      value: RLP.decode_unsigned(value),
+      init: init,
+      data: data,
+      v: RLP.decode_unsigned(v),
+      r: RLP.decode_unsigned(r),
+      s: RLP.decode_unsigned(s),
+    }
+  end
+
+  @doc """
   Validates the validity of a transaction that is required to be
   true before we're willing to execute a transaction. This is
   specified in Section 6.2 of the Yellow Paper Eq.(65) and Eq.(66).
@@ -71,7 +114,6 @@ defmodule Blockchain.Transaction do
   ## Examples
 
       # Sender address is nil
-      iex> private_key = <<1::256>>
       iex> trx = %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5, r: 1, s: 2, v: 3}
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
@@ -79,7 +121,6 @@ defmodule Blockchain.Transaction do
 
       # Sender account is nil
       iex> private_key = <<1::256>>
-      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
       iex> trx =
       ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 1_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
       ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
@@ -167,7 +208,7 @@ defmodule Blockchain.Transaction do
   @doc """
   Performs transaction execution, as defined in Section 6
   of the Yellow Paper, defined there as 𝛶, Eq.(1) and Eq.(59),
-  and Eq.(70).
+  Eq.(70), Eq.(79) and Eq.(80).
 
   From the Yellow Paper, T_o is the original transactor, which can differ from the
   sender in the case of a message call or contract creation
@@ -186,10 +227,12 @@ defmodule Blockchain.Transaction do
       iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
       iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: <<>>, value: 5, init: machine_code}
       ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
-      iex> MerklePatriciaTrie.Trie.new()
+      iex> {state, gas, logs} = MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
       ...> |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
-      ...> |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address])
+      iex> {gas, logs}
+      {53756, <<>>}
+      iex> Blockchain.Account.get_accounts(state, [sender, beneficiary, contract_address])
       [%Blockchain.Account{balance: 238727, nonce: 6}, %Blockchain.Account{balance: 161268}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
 
       # Message call
@@ -200,14 +243,16 @@ defmodule Blockchain.Transaction do
       iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
       iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: contract_address, value: 5, init: machine_code}
       ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
-      iex> MerklePatriciaTrie.Trie.new()
+      iex> {state, gas, logs} = MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
       ...> |> Blockchain.Account.put_code(contract_address, machine_code)
       ...> |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
-      ...> |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address])
+      iex> {gas, logs}
+      {21756, <<>>}
+      iex> Blockchain.Account.get_accounts(state, [sender, beneficiary, contract_address])
       [%Blockchain.Account{balance: 334727, nonce: 6}, %Blockchain.Account{balance: 65268}, %Blockchain.Account{balance: 5, code_hash: <<247, 60, 39, 205, 253, 89, 146, 143, 219, 173, 26, 213, 173, 221, 39, 44, 111, 59, 34, 217, 228, 91, 21, 167, 59, 107, 79, 33, 90, 183, 135, 213>>}]
   """
-  @spec execute_transaction(EVM.VM.state, t, Header.t) :: EVM.VM.state
+  @spec execute_transaction(EVM.VM.state, t, Header.t) :: { EVM.VM.state, EVM.Gas.t, EVM.SubState.logs }
   def execute_transaction(state, trx, block_header) do
     # TODO: Check transaction validity.
     {:ok, sender} = Blockchain.Transaction.Signature.sender(trx)
@@ -237,9 +282,10 @@ defmodule Blockchain.Transaction do
       Account.del_account(state, address)
     end)
 
-    state_after_suicides
+    expended_gas = trx.gas_limit - remaining_gas
 
-    # TODO: We need to track Υ^g and Υ^l
+    # { σ', Υ^g, Υ^l }, as defined in Eq.(79) and Eq.(80)
+    { state_after_suicides, expended_gas, sub_state.logs }
   end
 
   @doc """

@@ -19,10 +19,13 @@ defmodule Blockchain.TransactionTest do
       trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: <<>>, value: 5, init: machine_code}
             |> Blockchain.Transaction.Signature.sign_transaction(private_key)
 
-      assert MerklePatriciaTrie.Trie.new()
+      {state, gas_used, logs} = MerklePatriciaTrie.Trie.new()
         |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
         |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
-        |> Blockchain.Account.get_accounts([sender, beneficiary, contract_address]) ==
+
+      assert gas_used == 53004
+      assert logs == ""
+      assert Blockchain.Account.get_accounts(state, [sender, beneficiary, contract_address]) ==
         [
           %Blockchain.Account{balance: 240983, nonce: 6}, %Blockchain.Account{balance: 159012}, %Blockchain.Account{balance: 5}
         ]
