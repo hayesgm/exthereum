@@ -194,17 +194,23 @@ defmodule Blockchain.Block do
 
   ## Examples
 
-      iex> %Blockchain.Block{header: %Blockchain.Block.Header{number: 100_000, difficulty: 131072, timestamp: 5000, gas_limit: 500_000}}
-      ...> |> Blockchain.Block.gen_child_block(timestamp: 5010, extra_data: "hi")
-      %Blockchain.Block{header: %Blockchain.Block.Header{number: 100_001, difficulty: 131136, timestamp: 5010, gas_limit: 500_000, extra_data: "hi"}}
+      iex> %Blockchain.Block{header: %Blockchain.Block.Header{state_root: <<1::256>>, number: 100_000, difficulty: 131072, timestamp: 5000, gas_limit: 500_000}}
+      ...> |> Blockchain.Block.gen_child_block(timestamp: 5010, extra_data: "hi", beneficiary: <<5::160>>)
+      %Blockchain.Block{header: %Blockchain.Block.Header{state_root: <<1::256>>, beneficiary: <<5::160>>, number: 100_001, difficulty: 131136, timestamp: 5010, gas_limit: 500_000, extra_data: "hi"}}
+
+      iex> %Blockchain.Block{header: %Blockchain.Block.Header{state_root: <<1::256>>, number: 100_000, difficulty: 131072, timestamp: 5000, gas_limit: 500_000}}
+      ...> |> Blockchain.Block.gen_child_block(state_root: <<2::256>>, timestamp: 5010, extra_data: "hi", beneficiary: <<5::160>>)
+      %Blockchain.Block{header: %Blockchain.Block.Header{state_root: <<2::256>>, beneficiary: <<5::160>>, number: 100_001, difficulty: 131136, timestamp: 5010, gas_limit: 500_000, extra_data: "hi"}}
   """
   @spec gen_child_block(t, integer() | nil) :: t
   def gen_child_block(parent_block, opts \\ []) do
     timestamp = opts[:timestamp] || System.system_time(:second)
     gas_limit = opts[:gas_limit] || parent_block.header.gas_limit
+    beneficiary = opts[:beneficiary] || nil
     extra_data = opts[:extra_data] || <<>>
+    state_root = opts[:state_root] || parent_block.header.state_root
 
-    %Blockchain.Block{header: %Blockchain.Block.Header{timestamp: timestamp, extra_data: extra_data}}
+    %Blockchain.Block{header: %Blockchain.Block.Header{state_root: state_root, timestamp: timestamp, extra_data: extra_data, beneficiary: beneficiary}}
     |> set_block_number(parent_block)
     |> set_block_difficulty(parent_block)
     |> set_block_gas_limit(parent_block, gas_limit)
@@ -420,23 +426,48 @@ defmodule Blockchain.Block do
 
   ## Examples
 
-      # iex> block = %Blockchain.Block{number: 5}
-      # iex> Blockchain.Block.is_valid?(block, block, :ets)
-      # {:errors, [:abc]}
+      iex> beneficiary = <<0x05::160>>
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
+      iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: <<>>, value: 5, init: machine_code}
+      ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>         |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
+      iex> parent_block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 50, state_root: state.root_hash, difficulty: 50_000, timestamp: 9999, gas_limit: 125_001}}
+      iex> block = Blockchain.Block.gen_child_block(parent_block, beneficiary: beneficiary, timestamp: 10000, gas_limit: 125_001)
+      ...>         |> Blockchain.Block.add_transactions_to_block([trx], :ets)
+      iex> Blockchain.Block.is_valid?(block, parent_block, :ets)
+      :valid
+
+      iex> beneficiary = <<0x05::160>>
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> machine_code = EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return])
+      iex> trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: <<>>, value: 5, init: machine_code}
+      ...>       |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> state = MerklePatriciaTrie.Trie.new()
+      ...>         |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
+      iex> parent_block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 50, state_root: state.root_hash, difficulty: 50_000, timestamp: 9999, gas_limit: 125_001}}
+      iex> block = Blockchain.Block.gen_child_block(parent_block, beneficiary: beneficiary, timestamp: 10000, gas_limit: 125_001)
+      ...>         |> Blockchain.Block.add_transactions_to_block([trx], :ets)
+      iex> %{block | header: %{block.header | state_root: <<1,2,3>>, ommers_hash: <<2,3,4>>, transactions_root: <<3,4,5>>, receipts_root: <<4,5,6>>}}
+      ...> |> Blockchain.Block.is_valid?(parent_block, :ets)
+      {:errors, [:state_root_mismatch, :ommers_hash_mismatch, :transactions_root_mismatch, :receipts_root_mismatch]}
   """
   @spec is_valid?(t, t, atom()) :: :valid | {:errors, [atom()]}
   def is_valid?(block, parent_block, trie_db) do
     child_block =
-      gen_child_block(parent_block, timestamp: block.header.timestamp, gas_limit: block.header.gas_limit, extra_data: block.header.extra_data)
+      gen_child_block(parent_block, beneficiary: block.header.beneficiary, timestamp: block.header.timestamp, gas_limit: block.header.gas_limit, extra_data: block.header.extra_data)
       |> add_transactions_to_block(block.transactions, trie_db)
       |> add_ommers_to_block(block.ommers, trie_db)
 
     # The following checks Holistic Validity, as defined in Eq.(29)
     errors = []
-      ++ if child_block.state_root == block.state_root, do: [], else: [:state_root_mismatch]
-      ++ if child_block.ommers_hash == block.ommers_hash, do: [], else: [:ommers_hash_mismatch]
-      ++ if child_block.transactions_root == block.transactions_root, do: [], else: [:transactions_root_mismatch]
-      ++ if child_block.receipts_root == block.receipts_root, do: [], else: [:receipts_root_mismatch]
+      ++ if child_block.header.state_root == block.header.state_root, do: [], else: [:state_root_mismatch]
+      ++ if child_block.header.ommers_hash == block.header.ommers_hash, do: [], else: [:ommers_hash_mismatch]
+      ++ if child_block.header.transactions_root == block.header.transactions_root, do: [], else: [:transactions_root_mismatch]
+      ++ if child_block.header.receipts_root == block.header.receipts_root, do: [], else: [:receipts_root_mismatch]
 
     if errors == [], do: :valid, else: {:errors, errors}
   end
