@@ -16,7 +16,7 @@ defmodule Blockchain.Block.Header do
     logs_bloom: <<>>,        # Hb bloom
     difficulty: nil,         # Hd
     number: nil,             # Hi
-    gas_limit: nil,          # Hl
+    gas_limit: 0,            # Hl
     gas_used: 0,             # Hg
     timestamp: nil,          # Hs
     extra_data: <<>>,        # Hx
@@ -24,6 +24,7 @@ defmodule Blockchain.Block.Header do
     nonce: nil,              # Hn
   ]
 
+  # As defined in Eq.(35)
   @type t :: %{
     parent_hash: EVM.hash,
     ommers_hash: EVM.hash,
@@ -179,5 +180,20 @@ defmodule Blockchain.Block.Header do
   @spec is_valid?(t) :: boolean()
   def is_valid?(header) do
     true
+  end
+
+  @doc """
+  Returns the total available gas left for all transactions in
+  this block. This is the total gas limit minus the gas used
+  in transactions.
+
+  ## Examples
+
+      iex> Blockchain.Block.Header.available_gas(%Blockchain.Block.Header{gas_limit: 50_000, gas_used: 30_000})
+      20_000
+  """
+  @spec available_gas(t) :: EVM.Gas.t
+  def available_gas(header) do
+    header.gas_limit - header.gas_used
   end
 end

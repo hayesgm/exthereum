@@ -334,8 +334,7 @@ defmodule Blockchain.Block do
   end
 
   @doc """
-  Attaches an ommer to a block. We do no validation
-  at this stage.
+  Attaches an ommer to a block. We do no validation at this stage.
 
   ## Examples
 
@@ -422,7 +421,6 @@ defmodule Blockchain.Block do
   in the block to validate the block).
 
   # TODO: Handle parent blocks better.
-  # TODO: Better test cases and error handling
 
   ## Examples
 

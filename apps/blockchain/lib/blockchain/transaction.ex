@@ -68,10 +68,10 @@ defmodule Blockchain.Transaction do
 
   ## Examples
 
-      iex> Blockchain.Transaction.deserialize([5, 6, 7, <<1::160>>, 8, "hi", 27, 9, 10])
+      iex> Blockchain.Transaction.deserialize([<<5>>, <<6>>, <<7>>, <<1::160>>, <<8>>, "hi", <<27>>, <<9>>, <<10>>])
       %Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}
 
-      iex> Blockchain.Transaction.deserialize([5, 6, 7, <<>>, 8, <<1, 2, 3>>, 27, 9, 10])
+      iex> Blockchain.Transaction.deserialize([<<5>>, <<6>>, <<7>>, <<>>, <<8>>, <<1, 2, 3>>, <<27>>, <<9>>, <<10>>])
       %Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<>>, value: 8, v: 27, r: 9, s: 10, init: <<1, 2, 3>>}
   """
   @spec deserialize(RLP.t) :: t
@@ -171,7 +171,15 @@ defmodule Blockchain.Transaction do
       ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
       {:invalid, :insufficient_balance}
 
-      # TODO: gas above block limit
+      iex> private_key = <<1::256>>
+      iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
+      iex> trx =
+      ...>   %Blockchain.Transaction{data: <<>>, gas_limit: 100_000, gas_price: 1, init: <<1>>, nonce: 5, to: <<>>, value: 5}
+      ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
+      iex> MerklePatriciaTrie.Trie.new()
+      ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 100_006, nonce: 5})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{gas_limit: 50_000, gas_used: 49_999})
+      {:invalid, :over_gas_limit}
 
       iex> private_key = <<1::256>>
       iex> sender = <<82, 43, 246, 253, 8, 130, 229, 143, 111, 235, 9, 107, 65, 65, 123, 79, 140, 105, 44, 57>> # based on simple private key
@@ -180,7 +188,7 @@ defmodule Blockchain.Transaction do
       ...>   |> Blockchain.Transaction.Signature.sign_transaction(private_key)
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 100_006, nonce: 5})
-      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{})
+      ...> |> Blockchain.Transaction.is_valid?(trx, %Blockchain.Block.Header{gas_limit: 500_000, gas_used: 49_999})
       :valid
   """
   @spec is_valid?(EVM.state, t, Header.t) :: :valid | {:invalid, atom()}
@@ -198,7 +206,7 @@ defmodule Blockchain.Transaction do
               sender_account.nonce != trx.nonce -> {:invalid, :nonce_mismatch}
               g_0 > trx.gas_limit -> {:invalid, :insufficient_intrinsic_gas}
               v_0 > sender_account.balance -> {:invalid, :insufficient_balance}
-              # trx.gas_limit <= gas_limit(block_header)
+              trx.gas_limit > Header.available_gas(block_header) -> {:invalid, :over_gas_limit}
               true -> :valid
             end
         end
