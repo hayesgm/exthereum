@@ -73,4 +73,10 @@ defmodule RLPTest do
          158, 160, 162, 164, 166, 168, 170, 172, 174, 176, 178, 180, 182, 184, 186,
          188, 190, 192, 194, 196, 198, 200>>]
   end
+
+  test "encode and decode" do
+    x = 15_000_000_000_000_000_000_000_000_000_000_000
+
+    assert x |> RLP.encode |> RLP.decode |> :binary.decode_unsigned == x
+  end
 end

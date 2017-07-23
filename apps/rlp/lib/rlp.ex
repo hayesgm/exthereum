@@ -23,6 +23,9 @@ defmodule RLP do
 
 	## Examples
 
+		iex> RLP.decode(<<>>)
+		nil
+
 		iex> RLP.decode(<<0x83, ?d, ?o, ?g>>)
 		"dog"
 
@@ -52,6 +55,9 @@ defmodule RLP do
 
 		iex> RLP.decode(<<248, 60, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192, 192>>)
 		for _ <- 1..60, do: []
+
+		iex> RLP.decode(<<143, 2, 227, 142, 158, 4, 75, 160, 83, 84, 85, 150, 0, 0, 0, 0>>) |> :binary.decode_unsigned
+		15_000_000_000_000_000_000_000_000_000_000_000
 	"""
 
 	@spec decode(String.t) :: __MODULE__.t
@@ -65,7 +71,7 @@ defmodule RLP do
 	def do_decode(str) do
 		case str do
 			# Nothing
-			"" -> nil
+			"" -> {nil, 0}
 			# Single byte
 			<<x,_::binary>> when x < @sentinel_single_byte -> {<<x>>, 1}
 			# Single byte string
@@ -98,7 +104,7 @@ defmodule RLP do
 				arr_len_len = x - @sentinel_single_byte_arr_start
 				<<encoded_len::binary - size(arr_len_len),rest_2::binary>>=rest
 
-        total_len = decode_variable_length(encoded_len)
+        total_len = decode_unsigned(encoded_len)
 
 				items = take_items(<<rest_2::binary - size(total_len)>>, total_len)
 
@@ -156,6 +162,9 @@ defmodule RLP do
     iex> RLP.encode(15)
     <<0x0f>>
 
+    iex> RLP.encode(15_000_000_000_000_000_000_000_000_000_000_000)
+    <<143, 2, 227, 142, 158, 4, 75, 160, 83, 84, 85, 150, 0, 0, 0, 0>>
+
     iex> RLP.encode(1024)
     <<0x82, 0x04, 0x00>>
 
@@ -198,11 +207,42 @@ defmodule RLP do
 		if str_len <= single_byte_max do
       <<single_byte_start+str_len>>
 		else
-      len_encoded = encode_variable_length(str_len)
+      len_encoded = encode_unsigned(str_len)
 			<<multibyte_start + byte_size(len_encoded)>> <> len_encoded
 		end
 	end
 
-	defp encode_variable_length(l), do: :binary.encode_unsigned(l)
-	def decode_variable_length(l), do: :binary.decode_unsigned(l)
+	@doc """
+	Simple helper function for encoding an integer into a binary,
+	which is just an alias for :binary.encode_unsigned/1.
+
+	TODO: signed values?
+
+	## Examples
+
+			iex> RLP.encode_unsigned(5)
+			<<5>>
+
+			iex> RLP.encode_unsigned(15_000_000_000_000_000_000_000_000_000_000_000)
+			<<2, 227, 142, 158, 4, 75, 160, 83, 84, 85, 150, 0, 0, 0, 0>>
+	"""
+	@spec encode_unsigned(integer()) :: binary()
+	defdelegate encode_unsigned(i), to: :binary
+
+	@doc """
+	Simple helper function for decode a binary to an integer,
+	which is just an alias for :binary.decode_unsigned/1.
+
+	TODO: signed values?
+
+	## Examples
+
+			iex> RLP.decode_unsigned(<<5>>)
+			5
+
+			iex> RLP.decode_unsigned(<<2, 227, 142, 158, 4, 75, 160, 83, 84, 85, 150, 0, 0, 0, 0>>)
+			15_000_000_000_000_000_000_000_000_000_000_000
+	"""
+	@spec decode_unsigned(binary()) :: integer()
+	defdelegate decode_unsigned(i), to: :binary
 end
