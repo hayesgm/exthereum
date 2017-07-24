@@ -79,4 +79,22 @@ defmodule RLPTest do
 
     assert x |> RLP.encode |> RLP.decode |> :binary.decode_unsigned == x
   end
+
+  test "for a longer array with more elements" do
+    a = [
+      [<<1::256>>, <<2::256>>, <<3::160>>, <<4::256>>, <<5::256>>, <<6::256>>, <<>>, <<5>>, <<1>>, <<5>>, <<3>>, <<6>>, "Hi mom", <<7::256>>, <<8::64>>],
+      [[<<5>>, <<6>>, <<7>>, <<1::160>>, <<8>>, "hi", <<27>>, <<9>>, <<10>>]],
+      [[<<11::256>>, <<12::256>>, <<13::160>>, <<14::256>>, <<15::256>>, <<16::256>>, <<>>, <<5>>, <<1>>, <<5>>, <<3>>, <<6>>, "Hi mom", <<17::256>>, <<18::64>>]]
+    ]
+
+    assert a |> RLP.encode |> RLP.decode == a
+  end
+
+  test "for a longer array with a single element" do
+    a = [
+      [<<1::512>>]
+    ]
+
+    assert a |> RLP.encode |> RLP.decode == a
+  end
 end

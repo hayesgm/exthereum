@@ -108,7 +108,7 @@ defmodule RLP do
 
 				items = take_items(<<rest_2::binary - size(total_len)>>, total_len)
 
-				Enum.reduce(items, {[], 1}, fn ({item, size}, {items, total_size}) ->
+				Enum.reduce(items, {[], 1+arr_len_len}, fn ({item, size}, {items, total_size}) ->
 					{items++[item], total_size + size}
 				end)
 
