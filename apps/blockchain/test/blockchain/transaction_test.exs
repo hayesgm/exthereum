@@ -1,6 +1,7 @@
 defmodule Blockchain.TransactionTest do
   use ExUnit.Case, async: true
   doctest Blockchain.Transaction
+  alias Blockchain.Transaction
 
   setup_all do
     MerklePatriciaTrie.DB.ETS.init()
@@ -9,6 +10,12 @@ defmodule Blockchain.TransactionTest do
   end
 
   describe "when handling transactions" do
+
+    test "serialize and deserialize" do
+      trx = %Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}
+
+      assert trx == trx |> Transaction.serialize |> RLP.encode |> RLP.decode |> Transaction.deserialize
+    end
 
     test "for a transaction with a stop" do
       beneficiary = <<0x05::160>>

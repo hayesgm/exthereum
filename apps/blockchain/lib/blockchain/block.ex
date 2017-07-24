@@ -44,7 +44,7 @@ defmodule Blockchain.Block do
     ]
 
     iex> Blockchain.Block.serialize(%Blockchain.Block{})
-    [[nil, nil, nil, "", "", "", "", nil, nil, nil, 0, nil, "", nil, nil], [], []]
+    [[nil, nil, nil, "", "", "", "", nil, nil, 0, 0, nil, "", nil, nil], [], []]
   """
   @spec serialize(t) :: RLP.t
   def serialize(block) do
@@ -53,6 +53,38 @@ defmodule Blockchain.Block do
       Enum.map(block.transactions, &Transaction.serialize/1),
       Enum.map(block.ommers, &Header.serialize/1),
     ]
+  end
+
+  @doc """
+  Decodes a block from an RLP encoding. Effectively inverts
+  L_B defined in Eq.(33).
+
+  ## Examples
+
+      iex> Blockchain.Block.deserialize([
+      ...>   [<<1::256>>, <<2::256>>, <<3::160>>, <<4::256>>, <<5::256>>, <<6::256>>, <<>>, <<5>>, <<1>>, <<5>>, <<3>>, <<6>>, "Hi mom", <<7::256>>, <<8::64>>],
+      ...>   [[<<5>>, <<6>>, <<7>>, <<1::160>>, <<8>>, "hi", <<27>>, <<9>>, <<10>>]],
+      ...>   [[<<11::256>>, <<12::256>>, <<13::160>>, <<14::256>>, <<15::256>>, <<16::256>>, <<>>, <<5>>, <<1>>, <<5>>, <<3>>, <<6>>, "Hi mom", <<17::256>>, <<18::64>>]]
+      ...> ])
+      %Blockchain.Block{
+        header: %Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>},
+        transactions: [%Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}],
+        ommers: [%Blockchain.Block.Header{parent_hash: <<11::256>>, ommers_hash: <<12::256>>, beneficiary: <<13::160>>, state_root: <<14::256>>, transactions_root: <<15::256>>, receipts_root: <<16::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<17::256>>, nonce: <<18::64>>}]
+      }
+  """
+  @spec deserialize(RLP.t) :: t
+  def deserialize(rlp) do
+    [
+      header,
+      transactions,
+      ommers
+    ] = rlp
+
+    %__MODULE__{
+      header: Header.deserialize(header),
+      transactions: Enum.map(transactions, &Transaction.deserialize/1),
+      ommers: Enum.map(ommers, &Header.deserialize/1),
+    }
   end
 
   @doc """

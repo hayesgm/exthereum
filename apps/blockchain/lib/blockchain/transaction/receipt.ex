@@ -54,10 +54,10 @@ defmodule Blockchain.Transaction.Receipt do
 
   ## Examples
 
-    iex> Blockchain.Transaction.Receipt.deserialize([<<1,2,3>>, 5, <<2,3,4>>, "hi mom"])
+    iex> Blockchain.Transaction.Receipt.deserialize([<<1,2,3>>, <<5>>, <<2,3,4>>, "hi mom"])
     %Blockchain.Transaction.Receipt{state: <<1,2,3>>, cumulative_gas: 5, bloom_filter: <<2,3,4>>, logs: "hi mom"}
 
-    iex> Blockchain.Transaction.Receipt.deserialize([<<>>, 0, <<>>, <<>>])
+    iex> Blockchain.Transaction.Receipt.deserialize([<<>>, <<0>>, <<>>, <<>>])
     %Blockchain.Transaction.Receipt{}
   """
   @spec deserialize(RLP.t) :: t
