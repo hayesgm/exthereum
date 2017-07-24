@@ -43,6 +43,10 @@ defmodule Blockchain.Block.Header do
     nonce: <<_::64>>, # TODO: 64-bit hash?
   }
 
+  @d_0 131_072 # Eq.(40)
+  @max_extra_data_bytes 32 # Eq.(58)
+  @min_gas_limit 125_000 # Eq.(47)
+
   @doc "Returns the block that defines the start of Homestead"
   @spec homestead() :: integer()
   def homestead, do: @homestead
@@ -171,15 +175,50 @@ defmodule Blockchain.Block.Header do
   referred to as V(H).
 
   # TODO: Implement and add examples
+  # TODO: Add proof of work check
 
   ## Examples
 
-      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{})
-      false
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000}, nil)
+      :valid
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 0, difficulty: 5, gas_limit: 5}, nil)
+      {:invalid, [:invalid_difficulty, :invalid_gas_limit]}
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 1, difficulty: 131_136, gas_limit: 200_000, timestamp: 65}, %Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000, timestamp: 55})
+      :valid
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 1, difficulty: 131_000, gas_limit: 200_000, timestamp: 65}, %Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000, timestamp: 55})
+      {:invalid, [:invalid_difficulty]}
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 1, difficulty: 131_136, gas_limit: 200_000, timestamp: 45}, %Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000, timestamp: 55})
+      {:invalid, [:child_timestamp_invalid]}
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 1, difficulty: 131_136, gas_limit: 300_000, timestamp: 65}, %Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000, timestamp: 55})
+      {:invalid, [:invalid_gas_limit]}
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 2, difficulty: 131_136, gas_limit: 200_000, timestamp: 65}, %Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000, timestamp: 55})
+      {:invalid, [:child_number_invalid]}
+
+      iex> Blockchain.Block.Header.is_valid?(%Blockchain.Block.Header{number: 1, difficulty: 131_136, gas_limit: 200_000, timestamp: 65, extra_data: "0123456789012345678901234567890123456789"}, %Blockchain.Block.Header{number: 0, difficulty: 131_072, gas_limit: 200_000, timestamp: 55})
+      {:invalid, [:extra_data_too_large]}
   """
-  @spec is_valid?(t) :: boolean()
-  def is_valid?(header) do
-    true
+  @spec is_valid?(t, t) :: :valid | {:invalid, [atom()]}
+  def is_valid?(header, parent_header) do
+    parent_gas_limit = if parent_header, do: parent_header.gas_limit, else: nil
+
+    errors = [] ++
+      (if header.difficulty == get_difficulty(header, parent_header), do: [], else: [:invalid_difficulty]) ++ # Eq.(51)
+      (if header.gas_used <= header.gas_limit, do: [], else: [:exceeded_gas_limit]) ++ # Eq.(52)
+      (if is_gas_limit_valid?(header.gas_limit, parent_gas_limit), do: [], else: [:invalid_gas_limit]) ++ # Eq.(53), Eq.(54) and Eq.(55)
+      (if is_nil(parent_header) or header.timestamp > parent_header.timestamp, do: [], else: [:child_timestamp_invalid]) ++ # Eq.(56)
+      (if header.number == 0 or header.number == parent_header.number + 1, do: [], else: [:child_number_invalid]) ++ # Eq.(57)
+      (if byte_size(header.extra_data) <= @max_extra_data_bytes, do: [], else: [:extra_data_too_large])
+
+    case errors do
+      [] -> :valid
+      _ -> {:invalid, errors}
+    end
   end
 
   @doc """
@@ -195,5 +234,127 @@ defmodule Blockchain.Block.Header do
   @spec available_gas(t) :: EVM.Gas.t
   def available_gas(header) do
     header.gas_limit - header.gas_used
+  end
+
+  @doc """
+  Calculates the difficulty of a new block header. This implements Eq.(39),
+  Eq.(40), Eq.(41), Eq.(42), Eq.(43) and Eq.(44) of the Yellow Paper.
+
+  # TODO: Validate these results
+
+  ## Examples
+
+      # iex> Blockchain.Block.Header.get_difficulty(
+      # ...>   %Blockchain.Block.Header{number: 0, timestamp: 55},
+      # ...>   nil
+      # ...> )
+      # 131_072
+
+      # iex> Blockchain.Block.Header.get_difficulty(
+      # ...>  %Blockchain.Block.Header{number: 33, timestamp: 66},
+      # ...>  %Blockchain.Block.Header{number: 32, timestamp: 55, difficulty: 300_000}
+      # ...> )
+      # 300_146
+
+      # iex> Blockchain.Block.Header.get_difficulty(
+      # ...>  %Blockchain.Block.Header{number: 33, timestamp: 88},
+      # ...>  %Blockchain.Block.Header{number: 32, timestamp: 55, difficulty: 300_000}
+      # ...> )
+      # 299_854
+
+      # # TODO: Is this right? These numbers are quite a jump
+      # iex> Blockchain.Block.Header.get_difficulty(
+      # ...>  %Blockchain.Block.Header{number: 3_000_001, timestamp: 66},
+      # ...>  %Blockchain.Block.Header{number: 3_000_000, timestamp: 55, difficulty: 300_000}
+      # ...> )
+      # 268_735_456
+
+      # iex> Blockchain.Block.Header.get_difficulty(
+      # ...>  %Blockchain.Block.Header{number: 3_000_001, timestamp: 155},
+      # ...>  %Blockchain.Block.Header{number: 3_000_000, timestamp: 55, difficulty: 300_000}
+      # ...> )
+      # 268_734_142
+  """
+  @spec get_difficulty(t, t) :: integer()
+  def get_difficulty(header, parent_header) do
+    cond do
+      header.number == 0 -> @d_0
+      is_before_homestead?(header) -> max(@d_0, parent_header.difficulty + difficulty_x(parent_header.difficulty) * difficulty_s1(header, parent_header) + difficulty_e(header))
+      true -> max(@d_0, parent_header.difficulty + difficulty_x(parent_header.difficulty) * difficulty_s2(header, parent_header) + difficulty_e(header))
+    end
+  end
+
+  # Eq.(42) ς1
+  @spec difficulty_s1(t, t) :: integer()
+  defp difficulty_s1(header, parent_header) do
+    if header.timestamp < ( parent_header.timestamp + 13 ), do: 1, else: -1
+  end
+
+  # Eq.(43) ς2
+  @spec difficulty_s2(t, t) :: integer()
+  defp difficulty_s2(header, parent_header) do
+    s = MathHelper.floor( ( header.timestamp - parent_header.timestamp ) / 10 )
+    max(1 - s, -99)
+  end
+
+  # Eq.(41) x
+  @spec difficulty_x(integer()) :: integer()
+  defp difficulty_x(parent_difficulty), do: MathHelper.floor(parent_difficulty / 2048)
+
+  # Eq.(44) ε
+  @spec difficulty_e(t) :: integer()
+  defp difficulty_e(header) do
+    MathHelper.floor(
+      :math.pow(
+        2,
+        MathHelper.floor( header.number / 100_000 ) - 2
+      )
+    )
+  end
+
+  @doc """
+  Function to determine if the gas limit set is valid. The miner gets to
+  specify a gas limit, so long as it's in range. This allows about a 0.1% change
+  per block.
+
+  This function directly implements Eq.(45), Eq.(46) and Eq.(47).
+
+  ## Examples
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000_000, nil)
+      true
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000, nil)
+      false
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000_000, 1_000_000)
+      true
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000_000, 2_000_000)
+      false
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000_000, 500_000)
+      false
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000_000, 999_500)
+      true
+
+      iex> Blockchain.Block.Header.is_gas_limit_valid?(1_000_000, 999_000)
+      false
+  """
+  @spec is_gas_limit_valid?(EVM.Gas.t, EVM.Gas.t | nil) :: boolean()
+  def is_gas_limit_valid?(gas_limit, parent_gas_limit) do
+    if parent_gas_limit == nil do
+      # It's not entirely clear from the Yellow Paper
+      # whether a genesis block should have any limits
+      # on gas limit, other than min gas limit.
+      gas_limit > @min_gas_limit
+    else
+      max_delta = MathHelper.floor(parent_gas_limit / 1024)
+
+      ( gas_limit < parent_gas_limit + max_delta ) and
+      ( gas_limit > parent_gas_limit - max_delta ) and
+      gas_limit > @min_gas_limit
+    end
   end
 end

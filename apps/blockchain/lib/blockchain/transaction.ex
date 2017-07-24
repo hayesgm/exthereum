@@ -109,7 +109,7 @@ defmodule Blockchain.Transaction do
   true before we're willing to execute a transaction. This is
   specified in Section 6.2 of the Yellow Paper Eq.(65) and Eq.(66).
 
-  TODO: Add in ability to check against total gas_limit (boo!)
+  TODO: Consider returning a set of reasons, instead of a singular reason.
 
   ## Examples
 

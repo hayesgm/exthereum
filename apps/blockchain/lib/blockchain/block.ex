@@ -23,9 +23,6 @@ defmodule Blockchain.Block do
     ommers: [Header.t],
   }
 
-  @d_0 131_072 # Eq.(40)
-  @min_gas_limit 125_000 # Eq.(47)
-
   @doc """
   Encodes a block such that it can be represented in
   RLP encoding. This is defined as L_B Eq.(33) in the Yellow Paper.
@@ -263,8 +260,8 @@ defmodule Blockchain.Block do
   end
 
   @doc """
-  Calculates the difficulty of a new block. This implements Eq.(39),
-  Eq.(40), Eq.(41), Eq.(42), Eq.(43) and Eq.(44) of the Yellow Paper.
+  Set the difficulty of a new block based on Eq.(39), better defined
+  in Blockchain.Block.Header`.
 
   # TODO: Validate these results
 
@@ -281,59 +278,12 @@ defmodule Blockchain.Block do
       ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 32, timestamp: 55, difficulty: 300_000}}
       ...> )
       %Blockchain.Block{header: %Blockchain.Block.Header{number: 33, timestamp: 66, difficulty: 300_146}}
-
-      iex> Blockchain.Block.set_block_difficulty(
-      ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 33, timestamp: 88}},
-      ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 32, timestamp: 55, difficulty: 300_000}}
-      ...> )
-      %Blockchain.Block{header: %Blockchain.Block.Header{number: 33, timestamp: 88, difficulty: 299_854}}
-
-      # TODO: Is this right? These numbers are quite a jump
-      iex> Blockchain.Block.set_block_difficulty(
-      ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 3_000_001, timestamp: 66}},
-      ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 3_000_000, timestamp: 55, difficulty: 300_000}}
-      ...> )
-      %Blockchain.Block{header: %Blockchain.Block.Header{number: 3_000_001, timestamp: 66, difficulty: 268_735_456}}
-
-      iex> Blockchain.Block.set_block_difficulty(
-      ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 3_000_001, timestamp: 155}},
-      ...>   %Blockchain.Block{header: %Blockchain.Block.Header{number: 3_000_000, timestamp: 55, difficulty: 300_000}}
-      ...> )
-      %Blockchain.Block{header: %Blockchain.Block.Header{number: 3_000_001, timestamp: 155, difficulty: 268_734_142}}
   """
-  @spec set_block_difficulty(t, t) :: integer()
+  @spec set_block_difficulty(t, t) :: t
   def set_block_difficulty(block=%Blockchain.Block{header: header}, parent_block) do
-    difficulty = cond do
-      header.number == 0 -> @d_0
-      Header.is_before_homestead?(header) -> max(@d_0, parent_block.header.difficulty + difficulty_x(parent_block.header.difficulty) * difficulty_s1(header, parent_block.header) + difficulty_e(header))
-      true -> max(@d_0, parent_block.header.difficulty + difficulty_x(parent_block.header.difficulty) * difficulty_s2(header, parent_block.header) + difficulty_e(header))
-    end
+    difficulty = Header.get_difficulty(header, (if parent_block, do: parent_block.header, else: nil))
 
     %{block | header: %{header | difficulty: difficulty}}
-  end
-
-  # Eq.(42) ς1
-  defp difficulty_s1(block_header, parent_header) do
-    if block_header.timestamp < ( parent_header.timestamp + 13 ), do: 1, else: -1
-  end
-
-  # Eq.(43) ς2
-  defp difficulty_s2(block_header, parent_header) do
-    s = MathHelper.floor( ( block_header.timestamp - parent_header.timestamp ) / 10 )
-    max(1 - s, -99)
-  end
-
-  # Eq.(41) x
-  defp difficulty_x(parent_difficulty), do: MathHelper.floor(parent_difficulty / 2048)
-
-  # Eq.(44) ε
-  defp difficulty_e(block_header) do
-    MathHelper.floor(
-      :math.pow(
-        2,
-        MathHelper.floor( block_header.number / 100_000 ) - 2
-      )
-    )
   end
 
   @doc """
@@ -360,7 +310,7 @@ defmodule Blockchain.Block do
   """
   @spec set_block_gas_limit(t, t, EVM.Gas.t) :: t
   def set_block_gas_limit(block, parent_block, gas_limit) do
-    if not is_gas_limit_valid?(gas_limit, parent_block.header.gas_limit), do: raise "Block gas limit not valid"
+    if not Header.is_gas_limit_valid?(gas_limit, parent_block.header.gas_limit), do: raise "Block gas limit not valid"
 
     %{block | header: %{block.header | gas_limit: gas_limit}}
   end
@@ -409,39 +359,6 @@ defmodule Blockchain.Block do
       nil -> nil
       _ -> Header.deserialize(serialized_ommer |> RLP.decode)
     end
-  end
-
-  @doc """
-  Function to determine if the gas limit set is valid. The miner gets to
-  specify a gas limit, so long as it's in range. This allows about a 0.1% change
-  per block.
-
-  This function directly implements Eq.(45), Eq.(46) and Eq.(47).
-
-  ## Examples
-
-      iex> Blockchain.Block.is_gas_limit_valid?(1_000_000, 1_000_000)
-      true
-
-      iex> Blockchain.Block.is_gas_limit_valid?(1_000_000, 2_000_000)
-      false
-
-      iex> Blockchain.Block.is_gas_limit_valid?(1_000_000, 500_000)
-      false
-
-      iex> Blockchain.Block.is_gas_limit_valid?(1_000_000, 999_500)
-      true
-
-      iex> Blockchain.Block.is_gas_limit_valid?(1_000_000, 999_000)
-      false
-  """
-  @spec is_gas_limit_valid?(EVM.Gas.t, EVM.Gas.t) :: boolean()
-  def is_gas_limit_valid?(gas_limit, parent_gas_limit) do
-    max_delta = MathHelper.floor(parent_gas_limit / 1024)
-
-    ( gas_limit < parent_gas_limit + max_delta ) and
-    ( gas_limit > parent_gas_limit - max_delta ) and
-    gas_limit > @min_gas_limit
   end
 
   @doc """
