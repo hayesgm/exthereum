@@ -104,19 +104,16 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> MerklePatriciaTrie.Trie.update(<<0x01::160>>, RLP.encode([5, 6, <<1>>, <<2>>]))
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{nonce: 5, balance: 6, storage_root: <<0x01>>, code_hash: <<0x02>>}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> MerklePatriciaTrie.Trie.update(<<0x01::160>>, <<>>)
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       nil
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       nil
@@ -138,7 +135,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.update(MerklePatriciaTrie.Trie.new(), <<0x01::160>>, RLP.encode([5, 6, <<1>>, <<2>>]))
       iex> Blockchain.Account.get_accounts(state, [<<0x01::160>>, <<0x02::160>>])
       [
@@ -157,7 +153,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = Blockchain.Account.put_account(MerklePatriciaTrie.Trie.new(), <<0x01::160>>, %Blockchain.Account{nonce: 5, balance: 6, storage_root: <<0x01>>, code_hash: <<0x02>>})
       iex> MerklePatriciaTrie.Trie.get(state, <<0x01::160>>) |> RLP.decode
       [<<5>>, <<6>>, <<0x01>>, <<0x02>>]
@@ -178,14 +173,12 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...>   |> Blockchain.Account.del_account(<<0x01::160>>)
       ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
       nil
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.del_account(<<0x01::160>>)
       ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
@@ -203,14 +196,12 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...>   |> Blockchain.Account.update_account(<<0x01::160>>, fn (acc) -> %{acc | balance: acc.balance + 5} end)
       ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{balance: 15}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.update_account(<<0x01::160>>, fn (acc) -> %{acc | nonce: acc.nonce + 1} end)
       ...>   |> Blockchain.Account.get_account(<<0x01::160>>)
@@ -227,7 +218,6 @@ defmodule Blockchain.Account do
   @doc """
   Simple helper function to increment a nonce value.
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{nonce: 10})
       iex> state
@@ -249,7 +239,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> state
@@ -257,7 +246,6 @@ defmodule Blockchain.Account do
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{balance: 23}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> state
@@ -265,7 +253,6 @@ defmodule Blockchain.Account do
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{balance: 7}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> state
@@ -291,7 +278,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> state
@@ -299,7 +285,6 @@ defmodule Blockchain.Account do
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{balance: 7}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> state
@@ -307,7 +292,6 @@ defmodule Blockchain.Account do
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       ** (RuntimeError) wei reduced to less than zero
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> state
@@ -335,7 +319,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...>   |> Blockchain.Account.put_account(<<0x02::160>>, %Blockchain.Account{balance: 5})
@@ -343,14 +326,12 @@ defmodule Blockchain.Account do
       iex> {Blockchain.Account.get_account(state, <<0x01::160>>), Blockchain.Account.get_account(state, <<0x02::160>>)}
       {%Blockchain.Account{balance: 7}, %Blockchain.Account{balance: 8}}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> {:ok, state} = Blockchain.Account.transfer(state, <<0x01::160>>, <<0x02::160>>, 3)
       iex> {Blockchain.Account.get_account(state, <<0x01::160>>), Blockchain.Account.get_account(state, <<0x02::160>>)}
       {%Blockchain.Account{balance: 7}, %Blockchain.Account{balance: 3}}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       iex> Blockchain.Account.transfer(state, <<0x01::160>>, <<0x02::160>>, 12)
@@ -383,7 +364,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...>   |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...>   |> Blockchain.Account.put_account(<<0x02::160>>, %Blockchain.Account{balance: 5})
@@ -415,7 +395,6 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> state = MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.put_code(<<0x01::160>>, <<1, 2, 3>>)
       iex> Blockchain.Account.get_account(state, <<0x01::160>>)
@@ -453,18 +432,15 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.get_machine_code(<<0x01::160>>)
       {:ok, <<>>}
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{code_hash: <<555>>})
       ...> |> Blockchain.Account.get_machine_code(<<0x01::160>>)
       :not_found
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
       iex> MerklePatriciaTrie.Trie.new()
       ...> |> Blockchain.Account.put_code(<<0x01::160>>, <<1, 2, 3>>)
       ...> |> Blockchain.Account.get_machine_code(<<0x01::160>>)

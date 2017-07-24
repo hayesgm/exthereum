@@ -171,7 +171,7 @@ defmodule Blockchain.Transaction.Signature do
   ## Examples
 
       iex> Blockchain.Transaction.Signature.sign_transaction(%Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<>>, value: 5, init: <<1>>}, <<1::256>>)
-      %Blockchain.Transaction{data: nil, gas_limit: 7, gas_price: 6, init: <<1>>, nonce: 5, r: 38889131630470350300468726261158724183878062819625353581392042110782473464074, s: 56013001490976921811414879795854011730332692343890561111314022658085426919315, to: "", v: 27, value: 5}
+      %Blockchain.Transaction{data: <<>>, gas_limit: 7, gas_price: 6, init: <<1>>, nonce: 5, r: 38889131630470350300468726261158724183878062819625353581392042110782473464074, s: 56013001490976921811414879795854011730332692343890561111314022658085426919315, to: "", v: 27, value: 5}
   """
   @spec sign_transaction(Blockchain.Transaction.t, private_key) :: Blockchain.Transaction.t
   def sign_transaction(trx, private_key) do
