@@ -23,22 +23,38 @@ defmodule MerklePatriciaTrie.Trie do
 
   @type key :: <<_::32>>
 
+  @empty_trie MerklePatriciaTrie.Trie.Node.encode_node(:empty, nil)
+
+  @doc """
+  Returns the canonical empty trie.
+
+  ## Examples
+
+      iex> %MerklePatriciaTrie.Trie{root_hash: MerklePatriciaTrie.Trie.empty_trie} |> MerklePatriciaTrie.Trie.Node.decode_trie()
+      :empty
+  """
+  def empty_trie(), do: @empty_trie
+
   @doc """
   Contructs a new unitialized trie.
 
   ## Examples
 
     iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(:trie_test_1))
-    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :trie_test_1}, root_hash: nil}
+    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :trie_test_1}, root_hash: <<128>>}
 
     iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(:trie_test_2), <<1, 2, 3>>)
     %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :trie_test_2}, root_hash: <<1, 2, 3>>}
 
-    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.LevelDB.init("/tmp/#{MerklePatriciaTrie.Test.random_string(20)}"), <<1, 2, 3>>)
-    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.LevelDB, ""}, root_hash: <<1, 2, 3>>}
+    iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.LevelDB.init("/tmp/#{MerklePatriciaTrie.Test.random_string(20)}"), <<1, 2, 3>>)
+    iex> trie.root_hash
+    <<1, 2, 3>>
+    iex> {db, _db_ref} = trie.db
+    iex> db
+    MerklePatriciaTrie.DB.LevelDB
   """
   @spec new(DB.db, EVM.trie_root | nil) :: __MODULE__.t
-  def new(db={_, _}, root_hash \\ nil) do
+  def new(db={_, _}, root_hash \\ @empty_trie) do
     %__MODULE__{db: db, root_hash: root_hash}
   end
 

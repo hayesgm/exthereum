@@ -25,7 +25,7 @@ defmodule Blockchain.Contract do
       ...> |> Blockchain.Account.put_account(<<0x10::160>>, %Blockchain.Account{balance: 11, nonce: 5})
       ...> |> Blockchain.Contract.create_contract(<<0x10::160>>, <<0x10::160>>, 1000, 1, 5, EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return]), 5, %Blockchain.Block.Header{nonce: 1})
       {
-        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :contract_create_test}, root_hash: <<18, 208, 74, 136, 82, 80, 96, 162, 199, 93, 186, 132, 166, 206, 208, 131, 67, 2, 175, 242, 51, 254, 211, 104, 170, 178, 60, 65, 77, 5, 89, 101>>},
+        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :contract_create_test}, root_hash: <<108, 121, 175, 108, 152, 24, 131, 223, 204, 209, 143, 197, 188, 249, 235, 10, 75, 232, 57, 88, 61, 194, 109, 192, 200, 140, 70, 15, 3, 53, 54, 117>>},
         1000,
         %EVM.SubState{}
       }
@@ -33,6 +33,12 @@ defmodule Blockchain.Contract do
       [%Blockchain.Account{balance: 6, nonce: 5}, %Blockchain.Account{balance: 5, code_hash: <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>}]
       iex> Blockchain.Account.get_machine_code(state, Blockchain.Contract.new_contract_address(<<0x10::160>>, 5))
       {:ok, <<0x08::256>>}
+      iex> MerklePatriciaTrie.Trie.Inspector.all_keys(state)
+      [
+        <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16>>,
+        <<184, 49, 71, 53, 90, 147, 31, 209, 13, 252, 14, 242, 188, 146, 213, 98, 3, 169, 138, 178, 91, 23, 65, 191, 149, 7, 79, 68, 207, 121, 218, 225>>,
+        <<215, 103, 82, 153, 30, 215, 126, 236, 249, 242, 4, 46, 12, 67, 179, 240, 206, 97, 155, 241>>
+      ]
   """
   @spec create_contract(EVM.state, EVM.address, EVM.address, EVM.Gas.t, EVM.Gas.gas_price, EVM.Wei.t, EVM.MachineCode.t, integer(), Header.t) :: {EVM.state, EVM.Gas.t, SubState.t}
   def create_contract(state, sender, originator, available_gas, gas_price, endowment, init_code, stack_depth, block_header) do
@@ -92,13 +98,19 @@ defmodule Blockchain.Contract do
       ...> |> Blockchain.Account.put_code(<<0x20::160>>, EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return]))
       ...> |> Blockchain.Contract.message_call(<<0x10::160>>, <<0x10::160>>, <<0x20::160>>, <<0x20::160>>, 1000, 1, 5, 5, <<1, 2, 3>>, 5, %Blockchain.Block.Header{nonce: 1})
       {
-        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :message_call_test}, root_hash: <<70, 186, 76, 233, 29, 200, 31, 9, 127, 7, 127, 187, 244, 49, 105, 131, 63, 233, 104, 121, 45, 192, 23, 85, 26, 138, 79, 65, 119, 128, 205, 26>>},
+        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :message_call_test}, root_hash: <<71, 110, 222, 58, 171, 113, 33, 43, 212, 230, 197, 236, 189, 243, 103, 126, 148, 32, 37, 251, 132, 165, 107, 176, 63, 15, 150, 176, 170, 55, 53, 95>>},
         1000,
         %EVM.SubState{},
         <<0x08::256>>
       }
       iex> Blockchain.Account.get_accounts(state, [<<0x10::160>>, <<0x20::160>>])
       [%Blockchain.Account{balance: 5}, %Blockchain.Account{balance: 25, code_hash: <<247, 60, 39, 205, 253, 89, 146, 143, 219, 173, 26, 213, 173, 221, 39, 44, 111, 59, 34, 217, 228, 91, 21, 167, 59, 107, 79, 33, 90, 183, 135, 213>>}]
+      iex> MerklePatriciaTrie.Trie.Inspector.all_keys(state)
+      [
+        <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16>>,
+        <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32>>,
+        <<247, 60, 39, 205, 253, 89, 146, 143, 219, 173, 26, 213, 173, 221, 39, 44, 111, 59, 34, 217, 228, 91, 21, 167, 59, 107, 79, 33, 90, 183, 135, 213>> # this must be a sub-tree
+      ]
   """
   @spec message_call(EVM.state, EVM.address, EVM.address, EVM.address, EVM.address, EVM.Gas.t, EVM.Gas.gas_price, EVM.Wei.t, EVM.Wei.t, binary(), integer(), Header.t) :: { EVM.state, EVM.Gas.t, SubState.t, EVM.VM.output }
   def message_call(state, sender, originator, recipient, contract, available_gas, gas_price, value, apparent_value, data, stack_depth, block_header) do

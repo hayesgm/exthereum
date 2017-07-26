@@ -42,7 +42,7 @@ defmodule Blockchain.Block do
     ]
 
     iex> Blockchain.Block.serialize(%Blockchain.Block{})
-    [[nil, nil, nil, "", "", "", "", nil, nil, 0, 0, nil, "", nil, nil], [], []]
+    [[nil, <<128>>, nil, <<128>>, <<128>>, <<128>>, "", nil, nil, 0, 0, nil, "", nil, nil], [], []]
   """
   @spec serialize(t) :: RLP.t
   def serialize(block) do

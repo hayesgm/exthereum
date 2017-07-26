@@ -59,6 +59,34 @@ defmodule MerklePatriciaTrie.Trie.Inspector do
   end
 
   @doc """
+  Returns all keys from a trie.
+
+  Note: this simply calls `all_values/1` and returns
+  the first value of all tuples.
+
+  ## Examples
+
+      iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
+      ...>   |> MerklePatriciaTrie.Trie.update("type", "fighter")
+      ...>   |> MerklePatriciaTrie.Trie.update("name", "bob")
+      ...>   |> MerklePatriciaTrie.Trie.update("nationality", "usa")
+      ...>   |> MerklePatriciaTrie.Trie.update("nato", "strong")
+      ...>   |> MerklePatriciaTrie.Trie.update((for x <- 1..100, into: <<>>, do: <<x::8>>), (for x <- 1..100, into: <<>>, do: <<x*2::8>>))
+      ...>   |> MerklePatriciaTrie.Trie.Inspector.all_keys()
+      [
+        (for x <- 1..100, into: <<>>, do: <<x::8>>),
+        "name",
+        "nationality",
+        "nato",
+        "type",
+      ]
+  """
+  @spec all_keys(Trie.t) :: [binary()]
+  def all_keys(trie) do
+    trie |> all_values |> Enum.map(fn {k,_v} -> k end)
+  end
+
+  @doc """
   Prints a visual depiction of a trie, returns trie itself.
 
   TODO: Test, possibly.

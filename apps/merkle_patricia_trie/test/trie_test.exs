@@ -1,5 +1,7 @@
 defmodule MerklePatriciaTrie.TrieTest do
   use ExUnit.Case, async: true
+  doctest MerklePatriciaTrie.Trie
+
   alias MerklePatriciaTrie.Trie
   alias MerklePatriciaTrie.Trie.Verifier
 

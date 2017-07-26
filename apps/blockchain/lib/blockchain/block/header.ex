@@ -5,23 +5,24 @@ defmodule Blockchain.Block.Header do
 
   # The start of the Homestead block, as defined in Eq.(13) of the Yellow Paper (N_H)
   @homestead 1_150_000
+  @empty_trie MerklePatriciaTrie.Trie.empty_trie()
 
   defstruct [
-    parent_hash: nil,        # Hp P(BH)Hr
-    ommers_hash: nil,        # Ho KEC(RLP(L∗H(BU)))
-    beneficiary: nil,        # Hc
-    state_root: <<>>,        # Hr TRIE(LS(Π(σ, B)))
-    transactions_root: <<>>, # Ht TRIE({∀i < kBTk, i ∈ P : p(i, LT (BT[i]))})
-    receipts_root: <<>>,     # He TRIE({∀i < kBRk, i ∈ P : p(i, LR(BR[i]))})
-    logs_bloom: <<>>,        # Hb bloom
-    difficulty: nil,         # Hd
-    number: nil,             # Hi
-    gas_limit: 0,            # Hl
-    gas_used: 0,             # Hg
-    timestamp: nil,          # Hs
-    extra_data: <<>>,        # Hx
-    mix_hash: nil,           # Hm
-    nonce: nil,              # Hn
+    parent_hash: nil,                # Hp P(BH)Hr
+    ommers_hash: @empty_trie,        # Ho KEC(RLP(L∗H(BU)))
+    beneficiary: nil,                # Hc
+    state_root: @empty_trie,         # Hr TRIE(LS(Π(σ, B)))
+    transactions_root: @empty_trie,  # Ht TRIE({∀i < kBTk, i ∈ P : p(i, LT (BT[i]))})
+    receipts_root: @empty_trie,      # He TRIE({∀i < kBRk, i ∈ P : p(i, LR(BR[i]))})
+    logs_bloom: <<>>,                # Hb bloom
+    difficulty: nil,                 # Hd
+    number: nil,                     # Hi
+    gas_limit: 0,                    # Hl
+    gas_used: 0,                     # Hg
+    timestamp: nil,                  # Hs
+    extra_data: <<>>,                # Hx
+    mix_hash: nil,                   # Hm
+    nonce: nil,                      # Hn
   ]
 
   # As defined in Eq.(35)
