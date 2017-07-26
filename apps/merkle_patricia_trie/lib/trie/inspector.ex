@@ -13,7 +13,7 @@ defmodule MerklePatriciaTrie.Trie.Inspector do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.ETS.init(__MODULE__))
+      iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
       ...>   |> MerklePatriciaTrie.Trie.update("type", "fighter")
       ...>   |> MerklePatriciaTrie.Trie.update("name", "bob")
       ...>   |> MerklePatriciaTrie.Trie.update("nationality", "usa")
@@ -41,7 +41,7 @@ defmodule MerklePatriciaTrie.Trie.Inspector do
       {:ext, k, v} -> get_trie_value(%{trie| root_hash: v}, merge_prefix(prefix, k))
       {:branch, branches} ->
         branch_value = List.last(branches) # TODO: We need to fix nil branch value!
-        base = if branch_value != <<192>>, do: [{prefix, branch_value}], else: []
+        base = if branch_value != <<>>, do: [{prefix, branch_value}], else: []
 
         Enum.reduce(0..15, base, fn (el, values) ->
           branch_root_hash = Enum.at(branches, el)

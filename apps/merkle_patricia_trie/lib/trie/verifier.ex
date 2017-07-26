@@ -6,6 +6,8 @@ defmodule MerklePatriciaTrie.Trie.Verifier do
   alias MerklePatriciaTrie.Trie
   alias MerklePatriciaTrie.Trie.Node
 
+  @empty_branch Node.encode_node(:empty, nil)
+
   @doc """
   Runs simple tests to verify a trie matches general specs.
 
@@ -59,11 +61,11 @@ defmodule MerklePatriciaTrie.Trie.Verifier do
       # All branches are technically okay, let's verify that
 
       # Let's verify we have at least one non-empty branch
-      if Enum.count(branches, &(&1 != <<192>>)) < 2 do
+      if Enum.count(branches, &(&1 != @empty_branch)) < 2 do
         {:error, "branch with only zero or one exits"}
       else
         # also check the value is okay
-        if v != <<192>> and not Enum.member?(values, v) do
+        if v != <<>> and not Enum.member?(values, v) do
           {:error, "branch value v does not appear in values (#{inspect v})"}
         else
           :ok

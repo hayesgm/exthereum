@@ -1,10 +1,10 @@
 defmodule MerklePatriciaTrie.Trie.Node do
   @moduledoc """
-  This module encode or decodes nodes from our
-  trie form into RLP form. Effectively implements
-  c(I, i) from http://gavwood.com/Paper.pdf.
+  This module encodes and decodes nodes from a
+  trie encoding back into RLP form. We effectively implement
+  `c(I, i)` from the Yellow Paper.
 
-  TODO: Test
+  TODO: Add richer set of tests, esp. in re: storage and branch values.
   """
 
   alias MerklePatriciaTrie.Trie
@@ -19,12 +19,26 @@ defmodule MerklePatriciaTrie.Trie.Node do
   @doc """
   Given a node, this function will encode the node
   and put the value to storage (for nodes that are
-  greater than 32 bytes encoded).
+  greater than 32 bytes encoded). This implements
+  `c(I, i)`, Eq.(179) of the Yellow Paper.
 
   ## Examples
 
-  iex> encode_node({:leaf, [5,6,7], "ok"})
-  "abc"
+  iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
+  iex> MerklePatriciaTrie.Trie.Node.encode_node(:empty, trie)
+  <<128>>
+
+  iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
+  iex> MerklePatriciaTrie.Trie.Node.encode_node({:leaf, [5,6,7], "ok"}, trie)
+  <<198, 130, 53, 103, 130, 111, 107>>
+
+  iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
+  iex> MerklePatriciaTrie.Trie.Node.encode_node({:branch, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>]}, trie)
+  <<209, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128>>
+
+  iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
+  iex> MerklePatriciaTrie.Trie.Node.encode_node({:ext, [1, 2, 3], <<>>}, trie)
+  <<196, 130, 17, 35, 128>>
   """
   @spec encode_node(trie_node, Trie.t) :: nil | binary()
   def encode_node(trie_node, trie) do
@@ -52,18 +66,30 @@ defmodule MerklePatriciaTrie.Trie.Node do
 
   @doc """
   Decodes the root of a given trie, effectively
-  undoing the encoding of c(I, i).
+  inverting the encoding from `c(I, i)` defined in
+  Eq.(179) fo the Yellow Paper.
 
   ## Examples
 
-  iex> MerklePatriciaTrie.Trie.Node.decode_trie(trie)
+  iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(), <<128>>)
+  iex> |> MerklePatriciaTrie.Trie.Node.decode_trie()
+  :empty
+
+  iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(), <<198, 130, 53, 103, 130, 111, 107>>)
+  iex> |> MerklePatriciaTrie.Trie.Node.decode_trie()
   {:leaf, [5,6,7], "ok"}
+
+  iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(), <<209, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128>>)
+  iex> |> MerklePatriciaTrie.Trie.Node.decode_trie()
+  {:branch, [<<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>]}
+
+  iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(), <<196, 130, 17, 35, 128>>)
+  iex> |> MerklePatriciaTrie.Trie.Node.decode_trie()
+  {:ext, [1, 2, 3], <<>>}
   """
   @spec decode_trie(Trie.Tree.t) :: trie_node
   def decode_trie(trie) do
     case Storage.get_node(trie) do
-      nil -> :empty # TODO: Should this be here, either?
-      [] -> :empty # TODO: I think we should remove this.
       <<>> -> :empty
       branches when length(branches) == 17 ->
         {:branch, branches}

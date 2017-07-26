@@ -28,17 +28,17 @@ defmodule MerklePatriciaTrie.Trie do
 
   ## Examples
 
-    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.ETS.init(__MODULE__))
-    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, MerklePatriciaTrie.Trie}, root_hash: nil}
+    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(:trie_test_1))
+    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :trie_test_1}, root_hash: nil}
 
-    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.ETS.init(:cool), <<1, 2, 3>>)
-    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :cool}, root_hash: <<1, 2, 3>>}
+    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(:trie_test_2), <<1, 2, 3>>)
+    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :trie_test_2}, root_hash: <<1, 2, 3>>}
 
-    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.LevelDB.init("/tmp/cool_db"), <<1, 2, 3>>)
+    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.LevelDB.init("/tmp/#{MerklePatriciaTrie.Test.random_string(20)}"), <<1, 2, 3>>)
     %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.LevelDB, ""}, root_hash: <<1, 2, 3>>}
   """
   @spec new(DB.db, EVM.trie_root | nil) :: __MODULE__.t
-  def new(db, root_hash \\ nil) do
+  def new(db={_, _}, root_hash \\ nil) do
     %__MODULE__{db: db, root_hash: root_hash}
   end
 
@@ -61,7 +61,7 @@ defmodule MerklePatriciaTrie.Trie do
 
   defp do_get(nil, _), do: nil
   defp do_get(trie, nibbles=[nibble| rest]) do
-    # Let's decode c(I, i)
+    # Let's decode `c(I, i)`
 
     case Node.decode_trie(trie) do
       :empty -> nil # no node, bail
@@ -105,7 +105,6 @@ defmodule MerklePatriciaTrie.Trie do
     # on a branch node), then we'll walk back up the tree and
     # update all previous ndes. This may require changing the
     # type of the node.
-
     Node.decode_trie(trie)
     |> Builder.put_key(Helper.get_nibbles(key), value, trie)
     |> Node.encode_node(trie)

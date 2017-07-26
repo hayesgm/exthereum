@@ -16,7 +16,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
 
   ## Examples
 
-    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS.init(__MODULE__)}
+    iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
     iex> MerklePatriciaTrie.Trie.Storage.put_node(<<>>, trie)
     nil
     iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode("Hi"), trie)
@@ -59,7 +59,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
   @spec get_node(Trie.t) :: RLP.t | nil
   def get_node(trie) do
     case trie.root_hash do
-      nil -> [] # nil
+      nil -> <<>> # nil
       x when byte_size(x) < @max_rlp_len -> RLP.decode(x) # stored directly
       h ->
         {db_module, _db_ref} = trie.db

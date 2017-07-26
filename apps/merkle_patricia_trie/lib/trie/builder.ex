@@ -15,6 +15,8 @@ defmodule MerklePatriciaTrie.Trie.Builder do
   alias MerklePatriciaTrie.Trie.Node
   alias MerklePatriciaTrie.ListHelper
 
+  @empty_branch Node.encode_node(:empty, nil)
+
   @doc """
   Adds a key-value pair to a given trie.
 
@@ -113,8 +115,7 @@ defmodule MerklePatriciaTrie.Trie.Builder do
 
   # Builds a branch node with starter values
   defp build_branch(branch_options, trie) do
-    empty_branch = RLP.encode([])
-    base = {:branch, (for _ <- 0..16, do: empty_branch)}
+    base = {:branch, (for _ <- 0..15, do: @empty_branch) ++ [<<>>]}
 
     Enum.reduce(branch_options, base,
         fn

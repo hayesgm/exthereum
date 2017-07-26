@@ -52,7 +52,7 @@ defmodule MerklePatriciaTrie.TrieTest do
   end
 
   test "create trie" do
-    trie = Trie.new(db: :ets)
+    trie = Trie.new(MerklePatriciaTrie.Test.random_ets_db())
 
     assert Trie.get(trie, <<0x01, 0x02, 0x03>>) == nil
   end
