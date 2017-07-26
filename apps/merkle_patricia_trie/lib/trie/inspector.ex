@@ -13,8 +13,7 @@ defmodule MerklePatriciaTrie.Trie.Inspector do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> MerklePatriciaTrie.Trie.new()
+      iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.ETS.init(__MODULE__))
       ...>   |> MerklePatriciaTrie.Trie.update("type", "fighter")
       ...>   |> MerklePatriciaTrie.Trie.update("name", "bob")
       ...>   |> MerklePatriciaTrie.Trie.update("nationality", "usa")

@@ -808,15 +808,15 @@ defmodule EVM.Instruction.Impl do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> state = EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})[:state]
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> state = EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new(db)})[:state]
       iex> EVM.Instruction.Impl.sload([0x11223344556677889900], %{state: state, stack: []})
       %{
         stack: [0x111222333444555]
       }
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> state = EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})[:state]
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> state = EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new(db)})[:state]
       iex> EVM.Instruction.Impl.sload([0x1234], %{state: state, stack: []})
       %{
         stack: [0x0]
@@ -842,14 +842,14 @@ defmodule EVM.Instruction.Impl do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})
+      iex> db = MerklePatriciaTrie.Test.random_ets_db(:store_word_test)
+      iex> EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new(db)})
       %{
-        state: %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS, root_hash: <<128, 58, 53, 102, 7, 182, 120, 131, 145, 91, 222, 83, 56, 42, 251, 168, 203, 138, 130, 246, 76, 122, 110, 218, 183, 131, 33, 205, 154, 136, 194, 212>>}
+        state: %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :store_word_test}, root_hash: <<128, 58, 53, 102, 7, 182, 120, 131, 145, 91, 222, 83, 56, 42, 251, 168, 203, 138, 130, 246, 76, 122, 110, 218, 183, 131, 33, 205, 154, 136, 194, 212>>}
       }
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new()})[:state] |> MerklePatriciaTrie.Trie.Inspector.all_values()
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> EVM.Instruction.Impl.sstore([0x11223344556677889900, 0x111222333444555], %{state: MerklePatriciaTrie.Trie.new(db)})[:state] |> MerklePatriciaTrie.Trie.Inspector.all_values()
       [
         {<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
            17, 34, 51, 68, 85, 102, 119, 136, 153, 0>>,

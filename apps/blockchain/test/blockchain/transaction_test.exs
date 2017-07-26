@@ -3,12 +3,6 @@ defmodule Blockchain.TransactionTest do
   doctest Blockchain.Transaction
   alias Blockchain.Transaction
 
-  setup_all do
-    MerklePatriciaTrie.DB.ETS.init()
-
-    :ok
-  end
-
   describe "when handling transactions" do
 
     test "serialize and deserialize" do
@@ -26,7 +20,7 @@ defmodule Blockchain.TransactionTest do
       trx = %Blockchain.Transaction{nonce: 5, gas_price: 3, gas_limit: 100_000, to: <<>>, value: 5, init: machine_code}
             |> Blockchain.Transaction.Signature.sign_transaction(private_key)
 
-      {state, gas_used, logs} = MerklePatriciaTrie.Trie.new()
+      {state, gas_used, logs} = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
         |> Blockchain.Account.put_account(sender, %Blockchain.Account{balance: 400_000, nonce: 5})
         |> Blockchain.Transaction.execute_transaction(trx, %Blockchain.Block.Header{beneficiary: beneficiary})
 

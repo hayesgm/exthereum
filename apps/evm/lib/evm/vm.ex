@@ -11,7 +11,6 @@ defmodule EVM.VM do
   alias EVM.Functions
   alias EVM.Gas
   alias EVM.Instruction
-  alias MerklePatriciaTrie.Trie
 
   @type output :: <<>>
 

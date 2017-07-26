@@ -1,22 +1,23 @@
 defmodule MerklePatriciaTrie.TrieTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias MerklePatriciaTrie.Trie
   alias MerklePatriciaTrie.Trie.Verifier
 
   @max_32_bits 4294967296
 
-  setup_all do
-    MerklePatriciaTrie.DB.ETS.init()
-    :ok
+  setup do
+    db = MerklePatriciaTrie.Test.random_ets_db()
+
+    {:ok, %{db: db}}
   end
 
   def leaf_node(key_end, value) do
     RLP.encode([HexPrefix.encode({key_end, true}), value])
   end
 
-  def store(node_value) do
+  def store(node_value, db) do
     node_hash = :keccakf1600.sha3_256(node_value)
-    MerklePatriciaTrie.DB.ETS.put!(node_hash, node_value)
+    MerklePatriciaTrie.DB.ETS.put!(db, node_hash, node_value)
 
     node_hash
   end
@@ -57,8 +58,8 @@ defmodule MerklePatriciaTrie.TrieTest do
   end
 
   describe "get" do
-    test "for a simple trie with just a leaf" do
-      trie = Trie.new(db: :ets)
+    test "for a simple trie with just a leaf", %{db: db} do
+      trie = Trie.new(db)
       trie = %{trie| root_hash: leaf_node([0x01, 0x02, 0x03], "cool")}
 
       assert Trie.get(trie, <<0x01::4>>) == nil
@@ -67,8 +68,8 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<0x01::4, 0x02::4, 0x03::4, 0x04::4>>) == nil
     end
 
-    test "for a trie with an extension node followed by a leaf" do
-      trie = Trie.new(db: :ets)
+    test "for a trie with an extension node followed by a leaf", %{db: db} do
+      trie = Trie.new(db)
       trie = %{trie| root_hash: extension_node([0x01, 0x02], leaf_node([0x03], "cool"))}
 
       assert Trie.get(trie, <<0x01::4>>) == nil
@@ -77,8 +78,8 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<0x01::4, 0x02::4, 0x03::4, 0x04::4>>) == nil
     end
 
-    test "for a trie with an extension node followed by an extension node and then leaf" do
-      trie = Trie.new(db: :ets)
+    test "for a trie with an extension node followed by an extension node and then leaf", %{db: db} do
+      trie = Trie.new(db)
       trie = %{trie| root_hash: extension_node([0x01, 0x02], extension_node([0x03], leaf_node([0x04], "cool")))}
 
       assert Trie.get(trie, <<0x01::4>>) == nil
@@ -88,8 +89,8 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<0x01::4, 0x02::4, 0x03::4, 0x04::4, 0x05::4>>) == nil
     end
 
-    test "for a trie with a branch node" do
-      trie = Trie.new(db: :ets)
+    test "for a trie with a branch node", %{db: db} do
+      trie = Trie.new(db)
       trie = %{trie| root_hash: extension_node([0x01], branch_node([leaf_node([0x02], "hi")|blanks(15)], "cool"))}
 
       assert Trie.get(trie, <<0x01::4>>) == "cool"
@@ -99,11 +100,11 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<0x01::4, 0x01::4>>) == nil
     end
 
-    test "for a trie with encoded nodes" do
+    test "for a trie with encoded nodes", %{db: db} do
       long_string = Enum.join(for _ <- 1..60, do: "A")
 
-      trie = Trie.new(db: :ets)
-      trie = %{trie| root_hash: extension_node([0x01, 0x02], leaf_node([0x03], long_string) |> store) |> store}
+      trie = Trie.new(db)
+      trie = %{trie| root_hash: extension_node([0x01, 0x02], leaf_node([0x03], long_string) |> store(db)) |> store(db)}
 
       assert Trie.get(trie, <<0x01::4>>) == nil
       assert Trie.get(trie, <<0x01::4, 0x02::4>>) == nil
@@ -113,8 +114,8 @@ defmodule MerklePatriciaTrie.TrieTest do
   end
 
   describe "update trie" do
-    test "add a leaf to an empty tree" do
-      trie = Trie.new(db: :ets)
+    test "add a leaf to an empty tree", %{db: db} do
+      trie = Trie.new(db)
 
       trie_2 = Trie.update(trie, <<0x01::4, 0x02::4, 0x03::4>>, "cool")
 
@@ -128,28 +129,28 @@ defmodule MerklePatriciaTrie.TrieTest do
       # assert Trie.root(trie_2) == "cool root"
     end
 
-    test "update a leaf value (when stored directly)" do
-      trie = Trie.new(db: :ets, root_hash: leaf_node([0x01, 0x02], "first"))
+    test "update a leaf value (when stored directly)", %{db: db} do
+      trie = Trie.new(db, leaf_node([0x01, 0x02], "first"))
       trie_2 = Trie.update(trie, <<0x01::4, 0x02::4>>, "second")
 
       assert Trie.get(trie, <<0x01::4, 0x02::4>>) == "first"
       assert Trie.get(trie_2, <<0x01::4, 0x02::4>>) == "second"
     end
 
-    test "update a leaf value (when stored in ets)" do
+    test "update a leaf value (when stored in ets)", %{db: db} do
       long_string = Enum.join(for _ <- 1..60, do: "A")
       long_string_2 = Enum.join(for _ <- 1..60, do: "B")
 
-      trie = Trie.new(db: :ets, root_hash: leaf_node([0x01, 0x02], long_string) |> store)
+      trie = Trie.new(db, leaf_node([0x01, 0x02], long_string) |> store(db))
       trie_2 = Trie.update(trie, <<0x01::4, 0x02::4>>, long_string_2)
 
       assert Trie.get(trie, <<0x01::4, 0x02::4>>) == long_string
       assert Trie.get(trie_2, <<0x01::4, 0x02::4>>) == long_string_2
     end
 
-    test "update branch under ext node" do
+    test "update branch under ext node", %{db: db} do
       trie =
-        Trie.new(db: :ets)
+        Trie.new(db)
         |> Trie.update(<<0x01::4, 0x02::4>>, "wee")
         |> Trie.update(<<0x01::4, 0x02::4, 0x03::4>>, "cool")
 
@@ -162,9 +163,9 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie_2, <<0x01::4, 0x02::4, 0x03::4, 0x04::4>>) == nil
     end
 
-    test "update multiple keys" do
+    test "update multiple keys", %{db: db} do
       trie =
-        Trie.new(db: :ets)
+        Trie.new(db)
         |> Trie.update(<<0x01::4, 0x02::4, 0x03::4>>, "a")
         |> Trie.update(<<0x01::4, 0x02::4, 0x03::4, 0x04::4>>, "b")
         |> Trie.update(<<0x01::4, 0x02::4, 0x04::4>>, "c")
@@ -176,9 +177,9 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<0x01::size(256)>>) == "d"
     end
 
-    test "a set of updates" do
+    test "a set of updates", %{db: db} do
       trie =
-        Trie.new(db: :ets)
+        Trie.new(db)
         |> Trie.update(<<5::4, 7::4, 10::4, 15::4, 15::4>>, "a")
         |> Trie.update(<<5::4, 11::4, 0::4, 0::4, 14::4>>, "b")
         |> Trie.update(<<5::4, 10::4, 0::4, 0::4, 14::4>>, "c")
@@ -192,9 +193,9 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<5::4, 10::4, 1::4, 0::4, 14::4>>) == "e"
     end
 
-    test "yet another set of updates" do
+    test "yet another set of updates", %{db: db} do
       trie =
-        Trie.new(db: :ets)
+        Trie.new(db)
         |> Trie.update(<<15::4, 10::4, 5::4, 11::4, 5::4, 2::4, 10::4, 9::4, 6::4, 13::4, 10::4, 3::4, 10::4, 6::4, 7::4, 1::4>>, "a")
         |> Trie.update(<<15::4, 11::4, 1::4, 14::4, 9::4, 7::4, 9::4, 5::4, 6::4, 15::4, 6::4, 11::4, 8::4, 5::4, 2::4, 12::4>>, "b")
         |> Trie.update(<<6::4, 1::4, 10::4, 10::4, 5::4, 7::4, 14::4, 3::4, 10::4, 0::4, 15::4, 3::4, 6::4, 4::4, 5::4, 0::4>>, "c")
@@ -204,9 +205,9 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<6::4, 1::4, 10::4, 10::4, 5::4, 7::4, 14::4, 3::4, 10::4, 0::4, 15::4, 3::4, 6::4, 4::4, 5::4, 0::4>>) == "c"
     end
 
-    test "yet another set of updates now in memory" do
+    test "yet another set of updates now in memory", %{db: db} do
       trie =
-        Trie.new(db: :memory)
+        Trie.new(db)
         |> Trie.update(<<15::4, 10::4, 5::4, 11::4, 5::4, 2::4, 10::4, 9::4, 6::4, 13::4, 10::4, 3::4, 10::4, 6::4, 7::4, 1::4>>, "a")
         |> Trie.update(<<15::4, 11::4, 1::4, 14::4, 9::4, 7::4, 9::4, 5::4, 6::4, 15::4, 6::4, 11::4, 8::4, 5::4, 2::4, 12::4>>, "b")
         |> Trie.update(<<6::4, 1::4, 10::4, 10::4, 5::4, 7::4, 14::4, 3::4, 10::4, 0::4, 15::4, 3::4, 6::4, 4::4, 5::4, 0::4>>, "c")
@@ -216,8 +217,8 @@ defmodule MerklePatriciaTrie.TrieTest do
       assert Trie.get(trie, <<6::4, 1::4, 10::4, 10::4, 5::4, 7::4, 14::4, 3::4, 10::4, 0::4, 15::4, 3::4, 6::4, 4::4, 5::4, 0::4>>) == "c"
     end
 
-    test "acceptence testing" do
-      {trie, values} = Enum.reduce(1..100, {Trie.new(db: :ets), []}, fn (_, {trie, dict}) ->
+    test "acceptence testing", %{db: db} do
+      {trie, values} = Enum.reduce(1..100, {Trie.new(db), []}, fn (_, {trie, dict}) ->
         key = random_key()
         value = random_value()
 

@@ -2,14 +2,11 @@ defmodule EVM.VMTest do
   use ExUnit.Case, async: true
   doctest EVM.VM
 
-  setup_all do
-    MerklePatriciaTrie.DB.ETS.init()
-    :ok
-  end
-
   setup do
+    db = MerklePatriciaTrie.Test.random_ets_db(:contract_create_test)
+
     {:ok, %{
-      state: MerklePatriciaTrie.Trie.new()
+      state: MerklePatriciaTrie.Trie.new(db)
     }}
   end
 

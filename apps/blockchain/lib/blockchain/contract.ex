@@ -20,12 +20,12 @@ defmodule Blockchain.Contract do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> {state, _gas, _sub_state} = MerklePatriciaTrie.Trie.new()
+      iex> db = MerklePatriciaTrie.Test.random_ets_db(:contract_create_test)
+      iex> {state, _gas, _sub_state} = MerklePatriciaTrie.Trie.new(db)
       ...> |> Blockchain.Account.put_account(<<0x10::160>>, %Blockchain.Account{balance: 11, nonce: 5})
       ...> |> Blockchain.Contract.create_contract(<<0x10::160>>, <<0x10::160>>, 1000, 1, 5, EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return]), 5, %Blockchain.Block.Header{nonce: 1})
       {
-        %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS, root_hash: <<18, 208, 74, 136, 82, 80, 96, 162, 199, 93, 186, 132, 166, 206, 208, 131, 67, 2, 175, 242, 51, 254, 211, 104, 170, 178, 60, 65, 77, 5, 89, 101>>},
+        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :contract_create_test}, root_hash: <<18, 208, 74, 136, 82, 80, 96, 162, 199, 93, 186, 132, 166, 206, 208, 131, 67, 2, 175, 242, 51, 254, 211, 104, 170, 178, 60, 65, 77, 5, 89, 101>>},
         1000,
         %EVM.SubState{}
       }
@@ -85,14 +85,14 @@ defmodule Blockchain.Contract do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> {state, _gas, _sub_state, _output} = MerklePatriciaTrie.Trie.new()
+      iex> db = MerklePatriciaTrie.Test.random_ets_db(:message_call_test)
+      iex> {state, _gas, _sub_state, _output} = MerklePatriciaTrie.Trie.new(db)
       ...> |> Blockchain.Account.put_account(<<0x10::160>>, %Blockchain.Account{balance: 10})
       ...> |> Blockchain.Account.put_account(<<0x20::160>>, %Blockchain.Account{balance: 20})
       ...> |> Blockchain.Account.put_code(<<0x20::160>>, EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return]))
       ...> |> Blockchain.Contract.message_call(<<0x10::160>>, <<0x10::160>>, <<0x20::160>>, <<0x20::160>>, 1000, 1, 5, 5, <<1, 2, 3>>, 5, %Blockchain.Block.Header{nonce: 1})
       {
-        %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS, root_hash: <<70, 186, 76, 233, 29, 200, 31, 9, 127, 7, 127, 187, 244, 49, 105, 131, 63, 233, 104, 121, 45, 192, 23, 85, 26, 138, 79, 65, 119, 128, 205, 26>>},
+        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :message_call_test}, root_hash: <<70, 186, 76, 233, 29, 200, 31, 9, 127, 7, 127, 187, 244, 49, 105, 131, 63, 233, 104, 121, 45, 192, 23, 85, 26, 138, 79, 65, 119, 128, 205, 26>>},
         1000,
         %EVM.SubState{},
         <<0x08::256>>
@@ -161,8 +161,7 @@ defmodule Blockchain.Contract do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> MerklePatriciaTrie.Trie.new()
+      iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
       ...> |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...> |> Blockchain.Contract.create_blank_contract(<<0x02::160>>, <<0x01::160>>, 6)
       ...> |> Blockchain.Account.get_accounts([<<0x01::160>>, <<0x02::160>>])
@@ -180,8 +179,7 @@ defmodule Blockchain.Contract do
 
   ## Examples
 
-      iex> MerklePatriciaTrie.DB.ETS.init()
-      iex> MerklePatriciaTrie.Trie.new()
+      iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
       ...> |> Blockchain.Account.put_account(<<0x01::160>>, %Blockchain.Account{balance: 10})
       ...> |> Blockchain.Contract.initialize_message_call(<<0x01::160>>, <<0x02::160>>, 6)
       ...> |> Blockchain.Account.get_accounts([<<0x01::160>>, <<0x02::160>>])

@@ -38,6 +38,7 @@ defmodule MerklePatriciaTrie.Mixfile do
       {:hex_prefix, in_umbrella: true},
       {:rlp, in_umbrella: true},
       {:keccakf1600, "~> 2.0.0"},
+      {:exleveldb, "~> 0.11.1"},
     ]
   end
 end

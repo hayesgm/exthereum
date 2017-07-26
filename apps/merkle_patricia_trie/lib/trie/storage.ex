@@ -16,8 +16,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
 
   ## Examples
 
-    iex> MerklePatriciaTrie.DB.ETS.init()
-    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS}
+    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS.init(__MODULE__)}
     iex> MerklePatriciaTrie.Trie.Storage.put_node(<<>>, trie)
     nil
     iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode("Hi"), trie)
@@ -32,7 +31,10 @@ defmodule MerklePatriciaTrie.Trie.Storage do
       x when x < @max_rlp_len -> rlp_encoded_node # return node itself
       _ ->
         node_hash = :keccakf1600.sha3_256(rlp_encoded_node) # sha3
-        trie.db.put!(node_hash, rlp_encoded_node) # store in db
+
+        {db_module, _db_ref} = trie.db
+
+        db_module.put!(trie.db, node_hash, rlp_encoded_node) # store in db
 
         node_hash # return hash
     end
@@ -44,8 +46,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
 
   ## Examples
 
-    iex> MerklePatriciaTrie.DB.ETS.init()
-    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS}
+    iex> trie = %MerklePatriciaTrie.Trie{db: MerklePatriciaTrie.DB.ETS.init(__MODULE__)}
     iex> MerklePatriciaTrie.Trie.Storage.get_node(%{trie| root_hash: <<130, 72, 105>>})
     "Hi"
     # iex> MerklePatriciaTrie.Trie.Storage.get_node(%{trie| root_hash: <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>})
@@ -60,10 +61,13 @@ defmodule MerklePatriciaTrie.Trie.Storage do
     case trie.root_hash do
       nil -> [] # nil
       x when byte_size(x) < @max_rlp_len -> RLP.decode(x) # stored directly
-      h -> case h |> trie.db.get do # stored in db
-        {:ok, v} -> RLP.decode(v)
-        :not_found -> raise "Cannot find value in DB: #{inspect trie.root_hash}"
-      end
+      h ->
+        {db_module, _db_ref} = trie.db
+
+        case db_module.get(trie.db, h) do # stored in db
+          {:ok, v} -> RLP.decode(v)
+          :not_found -> raise "Cannot find value in DB: #{inspect trie.root_hash}"
+        end
     end
   end
 

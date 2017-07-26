@@ -17,7 +17,7 @@ defmodule MerklePatriciaTrie.Trie do
   defstruct [db: nil, root_hash: nil]
 
   @type t :: %__MODULE__{
-    db: DB.t,
+    db: DB.db,
     root_hash: EVM.trie_root,
   }
 
@@ -28,17 +28,18 @@ defmodule MerklePatriciaTrie.Trie do
 
   ## Examples
 
-    iex> MerklePatriciaTrie.Trie.new(db: :ets)
-    %MerklePatriciaTrie.Trie{}
-  """
-  @spec new([]) :: __MODULE__.t
-  def new(opts \\ []) do
-    db = case opts[:db] do
-      :ets -> DB.ETS
-      _ -> DB.ETS
-    end
+    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.ETS.init(__MODULE__))
+    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, MerklePatriciaTrie.Trie}, root_hash: nil}
 
-    %__MODULE__{db: db, root_hash: opts[:root_hash]}
+    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.ETS.init(:cool), <<1, 2, 3>>)
+    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :cool}, root_hash: <<1, 2, 3>>}
+
+    iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.DB.LevelDB.init("/tmp/cool_db"), <<1, 2, 3>>)
+    %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.LevelDB, ""}, root_hash: <<1, 2, 3>>}
+  """
+  @spec new(DB.db, EVM.trie_root | nil) :: __MODULE__.t
+  def new(db, root_hash \\ nil) do
+    %__MODULE__{db: db, root_hash: root_hash}
   end
 
   @doc """
