@@ -2,13 +2,11 @@ defmodule MerklePatriciaTrie.DB.LevelDB do
   @moduledoc """
   Implementation of MerklePatriciaTrie.DB which
   is backed by leveldb.
-
-  TODO: db name / ref etc.
   """
 
   alias MerklePatriciaTrie.Trie
-
   alias MerklePatriciaTrie.DB
+
   @behaviour MerklePatriciaTrie.DB
 
   @doc """
@@ -22,10 +20,10 @@ defmodule MerklePatriciaTrie.DB.LevelDB do
   end
 
   @doc """
-  Pulls a key out of leveldb, if it exists.
+  Retrieves a key from the database.
   """
-  @spec get(DB.db, Trie.key) :: {:ok, DB.value} | :not_found
-  def get({_, db_ref}, key) do
+  @spec get(DB.db_ref, Trie.key) :: {:ok, DB.value} | :not_found
+  def get(db_ref, key) do
     case Exleveldb.get(db_ref, key) do
       {:ok, v} -> {:ok, v}
       :not_found -> :not_found
@@ -33,21 +31,10 @@ defmodule MerklePatriciaTrie.DB.LevelDB do
   end
 
   @doc """
-  Pulls a key out of leveldb, if it exists, or raises if not.
+  Stores a key in the database.
   """
-  @spec get!(DB.db, Trie.key) :: DB.value
-  def get!(db, key) do
-    case get(db, key) do
-      {:ok, value} -> value
-      :not_found -> raise "cannot find key `#{key}`"
-    end
-  end
-
-  @doc """
-  Puts a key into leveldb.
-  """
-  @spec put!(DB.db, Trie.key, DB.value) :: :ok
-  def put!({_, db_ref}, key, value) do
+  @spec put!(DB.db_ref, Trie.key, DB.value) :: :ok
+  def put!(db_ref, key, value) do
     case Exleveldb.put(db_ref, key, value) do
       :ok -> :ok
     end

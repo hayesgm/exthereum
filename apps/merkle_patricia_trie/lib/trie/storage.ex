@@ -5,6 +5,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
   Eq.(178) from the Yellow Paper.
   """
 
+  alias MerklePatriciaTrie.DB
   alias MerklePatriciaTrie.Trie
 
   @max_rlp_len 32
@@ -31,9 +32,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
       _ ->
         node_hash = :keccakf1600.sha3_256(rlp_encoded_node) # sha3
 
-        {db_module, _db_ref} = trie.db
-
-        db_module.put!(trie.db, node_hash, rlp_encoded_node) # store in db
+        DB.put!(trie.db, node_hash, rlp_encoded_node) # store in db
 
         node_hash # return hash
     end
@@ -69,9 +68,7 @@ defmodule MerklePatriciaTrie.Trie.Storage do
       <<>> -> <<>> # nil
       x when byte_size(x) < @max_rlp_len -> RLP.decode(x) # stored directly
       h ->
-        {db_module, _db_ref} = trie.db
-
-        case db_module.get(trie.db, h) do # stored in db
+        case DB.get(trie.db, h) do # stored in db
           {:ok, v} -> RLP.decode(v)
           :not_found -> raise "Cannot find value in DB: #{inspect trie.root_hash}"
         end

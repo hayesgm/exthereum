@@ -19,7 +19,7 @@ defmodule MerklePatriciaTrie.TrieTest do
 
   def store(node_value, db) do
     node_hash = :keccakf1600.sha3_256(node_value)
-    MerklePatriciaTrie.DB.ETS.put!(db, node_hash, node_value)
+    MerklePatriciaTrie.DB.put!(db, node_hash, node_value)
 
     node_hash
   end
