@@ -26,7 +26,7 @@ defmodule Blockchain.Block do
 
   @doc """
   Encodes a block such that it can be represented in
-  RLP encoding. This is defined as L_B Eq.(33) in the Yellow Paper.
+  RLP encoding. This is defined as `L_B` Eq.(33) in the Yellow Paper.
 
   ## Examples
 

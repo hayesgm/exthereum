@@ -43,6 +43,7 @@ defmodule Blockchain.Mixfile do
       {:rlp, in_umbrella: true},
       {:merkle_patricia_trie, in_umbrella: true},
       {:evm, in_umbrella: true},
+      {:math_helper, in_umbrella: true},
     ]
   end
 end

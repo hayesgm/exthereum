@@ -3,6 +3,7 @@ defmodule EVM.Functions do
   Set of functions defined in the Yellow Paper that do not logically
   fit in other modules.
   """
+
   alias EVM.ExecEnv
   alias EVM.MachineCode
   alias EVM.MachineState
@@ -13,8 +14,7 @@ defmodule EVM.Functions do
   @max_stack 1024
 
   @doc """
-  Returns whether or not the current program is halting due to a
-  `return` or terminal statement.
+  Returns whether or not the current program is halting due to a `return` or terminal statement.
 
   # Examples
 
@@ -58,10 +58,11 @@ defmodule EVM.Functions do
   end
 
   @doc """
-  Returns whether or not the current program is in an exceptional
-  halting state. This may be due to running out of gas,
-  having an invalid instruction, having a stack underflow,
-  having an invalid jump destination or having a stack overflow.
+  Returns whether or not the current program is in an exceptional halting state.
+  This may be due to running out of gas, having an invalid instruction, having
+  a stack underflow, having an invalid jump destination or having a stack overflow.
+
+  This is defined as `Z` in Eq.(126) of the Yellow Paper.
 
   ## Examples
 
@@ -103,10 +104,10 @@ defmodule EVM.Functions do
     s0 = Stack.peek(machine_state.stack)
 
     cond do
-      machine_state.gas < Gas.cost(state, machine_state, exec_env) ->
-        {:halt, :insufficient_gas}
       metadata == nil || dw == nil ->
         {:halt, :undefined_instruction}
+      machine_state.gas < Gas.cost(state, machine_state, exec_env) ->
+        {:halt, :insufficient_gas}
       length(machine_state.stack) < dw ->
         {:halt, :stack_underflow}
       Enum.member?([:jump, :jumpi], instruction) and

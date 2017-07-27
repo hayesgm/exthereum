@@ -9,7 +9,9 @@ defmodule EVM.MachineCode do
 
   @doc """
   Returns the current instruction being executed. In the
-  Yellow Paper, this is often referred to as `w`.
+  Yellow Paper, this is often referred to as `w`, and is
+  defined in Eq.(125) and again in Eq.(221).
+
 
   ## Examples
 

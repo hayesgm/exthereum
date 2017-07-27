@@ -1,5 +1,5 @@
 defmodule MathHelperTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   doctest MathHelper
 
 end

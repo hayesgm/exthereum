@@ -48,8 +48,8 @@ defmodule EVM.VM do
   end
 
   @doc """
-  Runs a cycle of our VM in a recursive fashion. Halts when return
-  or exception is hit.
+  Runs a cycle of our VM in a recursive fashion, defined as `X`, Eq.(122) of the
+  Yellow Paper. This function halts when return is called or an exception raised.
 
   TODO: Add gas to return
 
@@ -73,7 +73,7 @@ defmodule EVM.VM do
     case Functions.is_exception_halt?(state, machine_state, exec_env) do
       {:halt, _reason} ->
         # We're exception halting, undo it all.
-        {nil, machine_state, original_sub_state, exec_env, <<>>} # original sub-state?
+        {nil, machine_state, original_sub_state, exec_env, <<>>} # Question: should we return the original sub-state?
       :continue ->
         {n_state, n_machine_state, n_sub_state, n_exec_env} = cycle(state, machine_state, sub_state, exec_env)
 
@@ -85,13 +85,14 @@ defmodule EVM.VM do
   end
 
   @doc """
-  Runs a single cycle of our VM returning the new state
+  Runs a single cycle of our VM returning the new state, defined as `O`
+  in the Yellow Paper, Eq.(131).
 
   ## Examples
 
-      # TODO: How to handle trie state in tests?
-      iex> EVM.VM.cycle(%{}, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
-      {%{}, %EVM.MachineState{pc: 1, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])}}
+      iex> state = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(:evm_vm_test))
+      iex> EVM.VM.cycle(state, %EVM.MachineState{pc: 0, gas: 5, stack: [1, 2]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])})
+      {%MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :evm_vm_test}, root_hash: <<128>>}, %EVM.MachineState{pc: 1, gas: 5, stack: [3]}, %EVM.SubState{}, %EVM.ExecEnv{machine_code: EVM.MachineCode.compile([:add])}}
   """
   @spec cycle(EVM.state, MachineState.t, SubState.t, ExecEnv.t) :: {EVM.state, MachineState.t, SubState.t, ExecEnv.t}
   def cycle(state, machine_state, sub_state, exec_env) do

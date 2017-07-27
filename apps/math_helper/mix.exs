@@ -1,8 +1,8 @@
-defmodule EVM.Mixfile do
+defmodule MathHelper.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :evm,
+    [app: :math_helper,
      version: "0.1.0",
      build_path: "../../_build",
      config_path: "../../config/config.exs",
@@ -19,8 +19,7 @@ defmodule EVM.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger],
-     mod: {EVM.Application, []}]
+    [extra_applications: [:logger]]
   end
 
   # Dependencies can be Hex packages:
@@ -37,9 +36,6 @@ defmodule EVM.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [
-      {:merkle_patricia_trie, in_umbrella: true},
-      {:math_helper, in_umbrella: true},
-    ]
+    []
   end
 end
