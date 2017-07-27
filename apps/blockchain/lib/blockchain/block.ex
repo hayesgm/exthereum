@@ -86,6 +86,99 @@ defmodule Blockchain.Block do
   end
 
   @doc """
+  Computes hash of a block
+
+  TODO: Make better, a lot better
+
+  ## Examples
+
+      iex> %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
+      ...> |> Blockchain.Block.hash()
+      <<195, 190, 212, 21, 153, 190, 242, 206, 171, 245, 168, 227, 210, 229, 154, 248, 12, 61, 129, 119, 156, 64, 253, 107, 41, 225, 82, 230, 210, 47, 161, 191>>
+  """
+  @spec hash(t) :: EVM.hash
+  def hash(block) do
+    block.header |> Header.serialize() |> RLP.encode |> :keccakf1600.sha3_256 # sha3
+  end
+
+  @doc """
+  Stores a given block in the database.
+
+  ## Examples
+
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
+      iex> Blockchain.Block.put_block(block, db)
+      :ok
+      iex> MerklePatriciaTrie.DB.get(db, block |> Blockchain.Block.hash)
+      {:ok, <<220, 217, 131, 1, 2, 3, 129, 128, 131, 2, 3, 4, 129, 128, 129, 128, 129, 128, 128, 100, 5, 0, 0, 11, 128, 1, 2, 192, 192>>}
+  """
+  @spec put_block(t, DB.db) :: :ok
+  def put_block(block, db) do
+    MerklePatriciaTrie.DB.put!(db, block |> hash, block |> serialize |> RLP.encode)
+  end
+
+  @doc """
+  Returns a given block from the database, if
+  the node exists in the database.
+
+  ## Examples
+
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> Blockchain.Block.get_block(<<1, 2, 3>>, db)
+      :not_found
+
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> block = %Blockchain.Block{
+      ...>   transactions: [%Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}],
+      ...>   header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}
+      ...> }
+      iex> Blockchain.Block.put_block(block, db)
+      iex> Blockchain.Block.get_block(block |> Blockchain.Block.hash, db)
+      {:ok, %Blockchain.Block{
+        transactions: [%Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}],
+        header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}
+      }}
+  """
+  @spec get_block(EVM.hash, DB.db) :: {:ok, t} | :not_found
+  def get_block(block_hash, db) do
+    with {:ok, rlp} <- MerklePatriciaTrie.DB.get(db, block_hash) do
+      {:ok, rlp |> RLP.decode |> deserialize()}
+    end
+  end
+
+  @doc """
+  Returns the parent node for a given block,
+  if it exists.
+
+  We assume a block is a genesis block if it does not have
+  a valid `parent_hash` set.
+
+  ## Examples
+
+      iex> Blockchain.Block.get_parent_block(%Blockchain.Block{}, nil)
+      :genesis
+
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
+      iex> Blockchain.Block.put_block(block, db)
+      iex> Blockchain.Block.get_parent_block(%Blockchain.Block{header: %Blockchain.Block.Header{parent_hash: block |> Blockchain.Block.hash}}, db)
+      {:ok, %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}}
+
+      iex> db = MerklePatriciaTrie.Test.random_ets_db()
+      iex> block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
+      iex> Blockchain.Block.get_parent_block(%Blockchain.Block{header: %Blockchain.Block.Header{parent_hash: block |> Blockchain.Block.hash}}, db)
+      :not_found
+  """
+  @spec get_parent_block(t, DB.db) :: {:ok, t} | :genesis | :not_found
+  def get_parent_block(block, db) do
+    case block.header.parent_hash do
+      nil -> :genesis
+      block_hash -> get_block(block_hash, db)
+    end
+  end
+
+  @doc """
   Returns the total number of transactions
   included in a block. This is based on the
   transaction list for a given block.
