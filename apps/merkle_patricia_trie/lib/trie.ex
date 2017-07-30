@@ -5,7 +5,9 @@ defmodule MerklePatriciaTrie.Trie do
   time for insert, lookup and delete.
 
   For further inforamtion, please read the Yellow Paper spec:
-  https://ethereum.github.io/yellowpaper/paper.pdf (Appendix D)
+  https://ethereum.github.io/yellowpaper/paper.pdf (Appendix D).
+
+  This is also very helpful: https://i.stack.imgur.com/YZGxe.png
   """
 
   alias MerklePatriciaTrie.Trie.Helper
@@ -18,7 +20,7 @@ defmodule MerklePatriciaTrie.Trie do
 
   @type t :: %__MODULE__{
     db: DB.db,
-    root_hash: EVM.trie_root,
+    root_hash: EVM.trie_root
   }
 
   @type key :: <<_::32>>
