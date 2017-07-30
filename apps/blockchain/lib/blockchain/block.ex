@@ -109,13 +109,17 @@ defmodule Blockchain.Block do
       iex> db = MerklePatriciaTrie.Test.random_ets_db()
       iex> block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
       iex> Blockchain.Block.put_block(block, db)
-      :ok
+      {:ok, <<195, 190, 212, 21, 153, 190, 242, 206, 171, 245, 168, 227, 210, 229, 154, 248, 12, 61, 129, 119, 156, 64, 253, 107, 41, 225, 82, 230, 210, 47, 161, 191>>}
       iex> MerklePatriciaTrie.DB.get(db, block |> Blockchain.Block.hash)
       {:ok, <<220, 217, 131, 1, 2, 3, 129, 128, 131, 2, 3, 4, 129, 128, 129, 128, 129, 128, 128, 100, 5, 0, 0, 11, 128, 1, 2, 192, 192>>}
   """
-  @spec put_block(t, DB.db) :: :ok
+  @spec put_block(t, DB.db) :: {:ok, EVM.hash}
   def put_block(block, db) do
-    MerklePatriciaTrie.DB.put!(db, block |> hash, block |> serialize |> RLP.encode)
+    hash = block |> hash
+
+    :ok = MerklePatriciaTrie.DB.put!(db, hash, block |> serialize |> RLP.encode)
+
+    {:ok, hash}
   end
 
   @doc """
