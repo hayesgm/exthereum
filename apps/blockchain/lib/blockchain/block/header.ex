@@ -8,7 +8,7 @@ defmodule Blockchain.Block.Header do
   @empty_trie MerklePatriciaTrie.Trie.empty_trie()
 
   defstruct [
-    parent_hash: nil,                # Hp P(BH)Hr
+    parent_hash: <<>>,               # Hp P(BH)Hr
     ommers_hash: @empty_trie,        # Ho KEC(RLP(L∗H(BU)))
     beneficiary: nil,                # Hc
     state_root: @empty_trie,         # Hr TRIE(LS(Π(σ, B)))

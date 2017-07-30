@@ -44,7 +44,7 @@ defmodule Blockchain.Block do
     ]
 
     iex> Blockchain.Block.serialize(%Blockchain.Block{})
-    [[nil, <<128>>, nil, <<128>>, <<128>>, <<128>>, "", nil, nil, 0, 0, nil, "", nil, nil], [], []]
+    [[<<>>, <<128>>, nil, <<128>>, <<128>>, <<128>>, "", nil, nil, 0, 0, nil, "", nil, nil], [], []]
   """
   @spec serialize(t) :: RLP.t
   def serialize(block) do
@@ -179,7 +179,7 @@ defmodule Blockchain.Block do
   @spec get_parent_block(t, DB.db) :: {:ok, t} | :genesis | :not_found
   def get_parent_block(block, db) do
     case block.header.parent_hash do
-      nil -> :genesis
+      <<>> -> :genesis
       block_hash -> get_block(block_hash, db)
     end
   end
@@ -480,8 +480,6 @@ defmodule Blockchain.Block do
   faint of heart (since we need to run all transaction
   in the block to validate the block).
 
-  # TODO: Handle parent blocks better.
-
   ## Examples
 
       iex> db = MerklePatriciaTrie.Test.random_ets_db()
@@ -496,7 +494,7 @@ defmodule Blockchain.Block do
       iex> parent_block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 50, state_root: state.root_hash, difficulty: 50_000, timestamp: 9999, gas_limit: 125_001}}
       iex> block = Blockchain.Block.gen_child_block(parent_block, beneficiary: beneficiary, timestamp: 10000, gas_limit: 125_001)
       ...>         |> Blockchain.Block.add_transactions_to_block([trx], db)
-      iex> Blockchain.Block.is_valid?(block, parent_block, db)
+      iex> Blockchain.Block.is_holistic_valid?(block, parent_block, db)
       :valid
 
       iex> db = MerklePatriciaTrie.Test.random_ets_db()
@@ -512,11 +510,11 @@ defmodule Blockchain.Block do
       iex> block = Blockchain.Block.gen_child_block(parent_block, beneficiary: beneficiary, timestamp: 10000, gas_limit: 125_001)
       ...>         |> Blockchain.Block.add_transactions_to_block([trx], db)
       iex> %{block | header: %{block.header | state_root: <<1,2,3>>, ommers_hash: <<2,3,4>>, transactions_root: <<3,4,5>>, receipts_root: <<4,5,6>>}}
-      ...> |> Blockchain.Block.is_valid?(parent_block, db)
-      {:errors, [:state_root_mismatch, :ommers_hash_mismatch, :transactions_root_mismatch, :receipts_root_mismatch]}
+      ...> |> Blockchain.Block.is_holistic_valid?(parent_block, db)
+      {:invalid, [:state_root_mismatch, :ommers_hash_mismatch, :transactions_root_mismatch, :receipts_root_mismatch]}
   """
-  @spec is_valid?(t, t, DB.db) :: :valid | {:errors, [atom()]}
-  def is_valid?(block, parent_block, db) do
+  @spec is_holistic_valid?(t, t, DB.db) :: :valid | {:invalid, [atom()]}
+  def is_holistic_valid?(block, parent_block, db) do
     child_block =
       gen_child_block(parent_block, beneficiary: block.header.beneficiary, timestamp: block.header.timestamp, gas_limit: block.header.gas_limit, extra_data: block.header.extra_data)
       |> add_transactions_to_block(block.transactions, db)
@@ -529,7 +527,32 @@ defmodule Blockchain.Block do
       ++ if child_block.header.transactions_root == block.header.transactions_root, do: [], else: [:transactions_root_mismatch]
       ++ if child_block.header.receipts_root == block.header.receipts_root, do: [], else: [:receipts_root_mismatch]
 
-    if errors == [], do: :valid, else: {:errors, errors}
+    if errors == [], do: :valid, else: {:invalid, errors}
+  end
+
+  @doc """
+  Checks the validity of a block, including the validity of the
+  header and the transactions. This should verify that we should
+  accept the authenticity of a block.
+
+  # TODO: Add examples
+  """
+  @spec is_fully_valid?(t, t, DB.db) :: :valid | {:invalid, [atom()]}
+  def is_fully_valid?(block, parent_block, db) do
+    if block.header.number == 0 and parent_block == nil do
+      # We're going to assume genesis blocks are valid.
+      # We just need to verify no one can falsely advertise one.
+      :valid
+    else
+      if parent_block == nil do
+        {:errors, [:non_genesis_block_requires_parent]}
+      else
+        with :valid <- Blockchain.Block.Header.is_valid?(block.header, parent_block.header) do
+          # Pass to holistic validity check
+          is_holistic_valid?(block, parent_block, db)
+        end
+      end
+    end
   end
 
   @doc """
