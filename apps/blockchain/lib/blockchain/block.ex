@@ -13,12 +13,14 @@ defmodule Blockchain.Block do
 
   # Defined in Eq.(18)
   defstruct [
+    block_hash: nil,   # Hash for this block, acts simply as a cache.
     header: %Header{}, # B_H
     transactions: [],  # B_T
     ommers: [],        # B_U
   ]
 
   @type t :: %{
+    block_hash: nil | EVM.hash,
     header: Header.t,
     transactions: [Transaction.t],
     ommers: [Header.t],
