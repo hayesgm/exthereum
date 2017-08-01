@@ -46,7 +46,7 @@ defmodule Blockchain.Block do
     iex> Blockchain.Block.serialize(%Blockchain.Block{})
     [[<<>>, <<128>>, nil, <<128>>, <<128>>, <<128>>, "", nil, nil, 0, 0, nil, "", nil, nil], [], []]
   """
-  @spec serialize(t) :: RLP.t
+  @spec serialize(t) :: ExRLP.t
   def serialize(block) do
     [
       Header.serialize(block.header),
@@ -72,7 +72,7 @@ defmodule Blockchain.Block do
         ommers: [%Blockchain.Block.Header{parent_hash: <<11::256>>, ommers_hash: <<12::256>>, beneficiary: <<13::160>>, state_root: <<14::256>>, transactions_root: <<15::256>>, receipts_root: <<16::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<17::256>>, nonce: <<18::64>>}]
       }
   """
-  @spec deserialize(RLP.t) :: t
+  @spec deserialize(ExRLP.t) :: t
   def deserialize(rlp) do
     [
       header,
@@ -96,11 +96,11 @@ defmodule Blockchain.Block do
 
       iex> %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
       ...> |> Blockchain.Block.hash()
-      <<195, 190, 212, 21, 153, 190, 242, 206, 171, 245, 168, 227, 210, 229, 154, 248, 12, 61, 129, 119, 156, 64, 253, 107, 41, 225, 82, 230, 210, 47, 161, 191>>
+      <<68, 49, 193, 242, 44, 38, 138, 251, 173, 218, 208, 122, 65, 243, 58, 62, 238, 9, 129, 60, 160, 52, 44, 197, 160, 36, 207, 136, 17, 170, 157, 230>>
   """
   @spec hash(t) :: EVM.hash
   def hash(block) do
-    block.header |> Header.serialize() |> RLP.encode |> :keccakf1600.sha3_256 # sha3
+    block.header |> Header.serialize() |> ExRLP.encode |> :keccakf1600.sha3_256 # sha3
   end
 
   @doc """
@@ -111,15 +111,15 @@ defmodule Blockchain.Block do
       iex> db = MerklePatriciaTrie.Test.random_ets_db()
       iex> block = %Blockchain.Block{header: %Blockchain.Block.Header{number: 5, parent_hash: <<1, 2, 3>>, beneficiary: <<2, 3, 4>>, difficulty: 100, timestamp: 11, mix_hash: <<1>>, nonce: <<2>>}}
       iex> Blockchain.Block.put_block(block, db)
-      {:ok, <<195, 190, 212, 21, 153, 190, 242, 206, 171, 245, 168, 227, 210, 229, 154, 248, 12, 61, 129, 119, 156, 64, 253, 107, 41, 225, 82, 230, 210, 47, 161, 191>>}
+      {:ok, <<68, 49, 193, 242, 44, 38, 138, 251, 173, 218, 208, 122, 65, 243, 58, 62, 238, 9, 129, 60, 160, 52, 44, 197, 160, 36, 207, 136, 17, 170, 157, 230>>}
       iex> MerklePatriciaTrie.DB.get(db, block |> Blockchain.Block.hash)
-      {:ok, <<220, 217, 131, 1, 2, 3, 129, 128, 131, 2, 3, 4, 129, 128, 129, 128, 129, 128, 128, 100, 5, 0, 0, 11, 128, 1, 2, 192, 192>>}
+      {:ok, <<220, 217, 131, 1, 2, 3, 129, 128, 131, 2, 3, 4, 129, 128, 129, 128, 129, 128, 128, 100, 5, 128, 128, 11, 128, 1, 2, 192, 192>>}
   """
   @spec put_block(t, DB.db) :: {:ok, EVM.hash}
   def put_block(block, db) do
     hash = block |> hash
 
-    :ok = MerklePatriciaTrie.DB.put!(db, hash, block |> serialize |> RLP.encode)
+    :ok = MerklePatriciaTrie.DB.put!(db, hash, block |> serialize |> ExRLP.encode)
 
     {:ok, hash}
   end
@@ -149,7 +149,7 @@ defmodule Blockchain.Block do
   @spec get_block(EVM.hash, DB.db) :: {:ok, t} | :not_found
   def get_block(block_hash, db) do
     with {:ok, rlp} <- MerklePatriciaTrie.DB.get(db, block_hash) do
-      {:ok, rlp |> RLP.decode |> deserialize()}
+      {:ok, rlp |> ExRLP.decode |> deserialize()}
     end
   end
 
@@ -221,11 +221,11 @@ defmodule Blockchain.Block do
   def get_receipt(block, i, db) do
     serialized_receipt =
       Trie.new(db, block.header.receipts_root)
-      |> Trie.get(RLP.encode(i))
+      |> Trie.get(ExRLP.encode(i))
 
     case serialized_receipt do
       nil -> nil
-      _ -> Receipt.deserialize(serialized_receipt |> RLP.decode)
+      _ -> Receipt.deserialize(serialized_receipt |> ExRLP.decode)
     end
   end
 
@@ -259,11 +259,11 @@ defmodule Blockchain.Block do
   def get_transaction(block, i, db) do
     serialized_transaction =
       Trie.new(db, block.header.transactions_root)
-      |> Trie.get(RLP.encode(i))
+      |> Trie.get(ExRLP.encode(i))
 
     case serialized_transaction do
       nil -> nil
-      _ -> Transaction.deserialize(serialized_transaction |> RLP.decode)
+      _ -> Transaction.deserialize(serialized_transaction |> ExRLP.decode)
     end
   end
 
@@ -431,7 +431,7 @@ defmodule Blockchain.Block do
 
       iex> db = MerklePatriciaTrie.Test.random_ets_db()
       iex> Blockchain.Block.add_ommers_to_block(%Blockchain.Block{}, [%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}], db)
-      %Blockchain.Block{ommers: [%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}], header: %Blockchain.Block.Header{ommers_hash: <<220, 70, 182, 176, 89, 74, 86, 110, 155, 194, 68, 71, 165, 248, 240, 226, 128, 12, 39, 243, 85, 43, 143, 95, 187, 92, 97, 129, 15, 139, 238, 215>>}}
+      %Blockchain.Block{ommers: [%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}], header: %Blockchain.Block.Header{ommers_hash: <<190, 9, 197, 156, 71, 81, 153, 34, 225, 51, 54, 6, 58, 77, 126, 175, 115, 90, 67, 152, 206, 76, 29, 150, 88, 205, 30, 201, 161, 111, 252, 103>>}}
   """
   @spec add_ommers_to_block(t, [Header.t], DB.db) :: t
   def add_ommers_to_block(block, ommers, db) do
@@ -442,7 +442,7 @@ defmodule Blockchain.Block do
   defp do_add_ommers_to_block(block, [ommer|ommers], db, i) do
     updated_ommers_hash =
       Trie.new(db, block.header.ommers_hash)
-      |> Trie.update(RLP.encode(i), Header.serialize(ommer) |> RLP.encode)
+      |> Trie.update(ExRLP.encode(i), Header.serialize(ommer) |> ExRLP.encode)
 
     updated_block = %{block | ommers: block.ommers ++ [ommer], header: %{block.header | ommers_hash: updated_ommers_hash.root_hash}}
 
@@ -464,11 +464,11 @@ defmodule Blockchain.Block do
   def get_ommer(block, i, db) do
     serialized_ommer =
       Trie.new(db, block.header.ommers_hash)
-      |> Trie.get(RLP.encode(i))
+      |> Trie.get(ExRLP.encode(i))
 
     case serialized_ommer do
       nil -> nil
-      _ -> Header.deserialize(serialized_ommer |> RLP.decode)
+      _ -> Header.deserialize(serialized_ommer |> ExRLP.decode)
     end
   end
 
@@ -648,7 +648,7 @@ defmodule Blockchain.Block do
   def put_receipt(block, i, receipt, db) do
     updated_receipts_root =
       Trie.new(db, block.header.receipts_root)
-      |> Trie.update(RLP.encode(i), Receipt.serialize(receipt) |> RLP.encode)
+      |> Trie.update(ExRLP.encode(i), Receipt.serialize(receipt) |> ExRLP.encode)
 
     %{block | header: %{block.header | receipts_root: updated_receipts_root.root_hash}}
   end
@@ -666,14 +666,14 @@ defmodule Blockchain.Block do
       [%Blockchain.Transaction{nonce: 1, v: 2, r: 3, s: 4}]
       iex> MerklePatriciaTrie.Trie.new(db, block.header.transactions_root)
       ...> |> MerklePatriciaTrie.Trie.Inspector.all_values()
-      [{<<0>>, <<201, 1, 0, 0, 128, 0, 128, 2, 3, 4>>}]
+      [{<<0x80>>, <<201, 1, 128, 128, 128, 128, 128, 2, 3, 4>>}]
   """
   @spec put_transaction(t, number(), Transaction.t, atom()) :: t
   def put_transaction(block, i, trx, db) do
     total_transactions =  block.transactions ++ [trx]
     updated_transactions_root =
       Trie.new(db, block.header.transactions_root)
-      |> Trie.update(RLP.encode(i), Transaction.serialize(trx) |> RLP.encode)
+      |> Trie.update(ExRLP.encode(i), Transaction.serialize(trx) |> ExRLP.encode)
 
     %{block | transactions: total_transactions, header: %{block.header | transactions_root: updated_transactions_root.root_hash}}
   end

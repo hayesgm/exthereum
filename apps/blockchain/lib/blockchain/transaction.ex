@@ -46,7 +46,7 @@ defmodule Blockchain.Transaction do
       iex> Blockchain.Transaction.serialize(%Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<>>, value: 8, v: 27, r: 9, s: 10, init: <<1, 2, 3>>})
       [5, 6, 7, <<>>, 8, <<1, 2, 3>>, 27, 9, 10]
   """
-  @spec serialize(t) :: RLP.t
+  @spec serialize(t) :: ExRLP.t
   def serialize(trx) do
     [
       trx.nonce,
@@ -74,7 +74,7 @@ defmodule Blockchain.Transaction do
       iex> Blockchain.Transaction.deserialize([<<5>>, <<6>>, <<7>>, <<>>, <<8>>, <<1, 2, 3>>, <<27>>, <<9>>, <<10>>])
       %Blockchain.Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<>>, value: 8, v: 27, r: 9, s: 10, init: <<1, 2, 3>>}
   """
-  @spec deserialize(RLP.t) :: t
+  @spec deserialize(ExRLP.t) :: t
   def deserialize(rlp) do
     [
       nonce,
@@ -91,16 +91,16 @@ defmodule Blockchain.Transaction do
     {init, data} = if to == <<>>, do: {init_or_data, <<>>}, else: {<<>>, init_or_data}
 
     %Blockchain.Transaction{
-      nonce: RLP.decode_unsigned(nonce),
-      gas_price: RLP.decode_unsigned(gas_price),
-      gas_limit: RLP.decode_unsigned(gas_limit),
+      nonce: :binary.decode_unsigned(nonce),
+      gas_price: :binary.decode_unsigned(gas_price),
+      gas_limit: :binary.decode_unsigned(gas_limit),
       to: to,
-      value: RLP.decode_unsigned(value),
+      value: :binary.decode_unsigned(value),
       init: init,
       data: data,
-      v: RLP.decode_unsigned(v),
-      r: RLP.decode_unsigned(r),
-      s: RLP.decode_unsigned(s),
+      v: :binary.decode_unsigned(v),
+      r: :binary.decode_unsigned(r),
+      s: :binary.decode_unsigned(s),
     }
   end
 

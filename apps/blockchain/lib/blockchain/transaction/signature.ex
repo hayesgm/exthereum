@@ -159,7 +159,7 @@ defmodule Blockchain.Transaction.Signature do
   def transaction_hash(trx) do
     Blockchain.Transaction.serialize(trx)
       |> Enum.take(6)
-      |> RLP.encode()
+      |> ExRLP.encode()
       |> BitHelper.kec()
   end
 

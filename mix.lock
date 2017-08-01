@@ -1,4 +1,5 @@
 %{"eleveldb": {:hex, :eleveldb, "2.2.20", "1fff63a5055bbf4bf821f797ef76065882b193f5e8095f95fcd9287187773b58", [:rebar3], [], "hexpm"},
+  "ex_rlp": {:git, "https://github.com/exthereum/ex_rlp.git", "4d2f7614045b932a98cdeb5fdb80cace088fda30", [branch: "hayesgm/binary-encoding"]},
   "exleveldb": {:hex, :exleveldb, "0.11.1", "37c0414208a50d2419d8246305e6c4a33ed339c25c0bdfa27774795e1e089f7b", [:mix], [{:eleveldb, "~> 2.2.19", [hex: :eleveldb, repo: "hexpm", optional: false]}], "hexpm"},
   "hex2bin": {:hex, :hex2bin, "1.0.0", "aac26eab998ae80eacee1c7607c629ab503ebf77a62b9242bae2b94d47dcb71e", [:rebar3], [], "hexpm"},
   "keccak": {:hex, :keccak, "2.0.0", "bb5a84544591d52eb5bf4d9edba767c5cfb6f8523ed70cc7a38082d53ca32be7", [:rebar3], [{:hex2bin, "1.0.0", [hex: :hex2bin, repo: "hexpm", optional: false]}], "hexpm"},

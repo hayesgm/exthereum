@@ -40,7 +40,7 @@ defmodule Blockchain.Mixfile do
     [
       {:libsecp256k1, github: "mbrix/libsecp256k1", manager: :rebar},
       {:keccakf1600, "~> 2.0.0"},
-      {:rlp, in_umbrella: true},
+      {:ex_rlp, github: "exthereum/ex_rlp", branch: "hayesgm/binary-encoding"},
       {:merkle_patricia_trie, in_umbrella: true},
       {:evm, in_umbrella: true},
       {:math_helper, in_umbrella: true},

@@ -8,7 +8,7 @@ defmodule Blockchain.TransactionTest do
     test "serialize and deserialize" do
       trx = %Transaction{nonce: 5, gas_price: 6, gas_limit: 7, to: <<1::160>>, value: 8, v: 27, r: 9, s: 10, data: "hi"}
 
-      assert trx == trx |> Transaction.serialize |> RLP.encode |> RLP.decode |> Transaction.deserialize
+      assert trx == trx |> Transaction.serialize |> ExRLP.encode |> ExRLP.decode |> Transaction.deserialize
     end
 
     test "for a transaction with a stop" do

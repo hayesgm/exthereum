@@ -38,7 +38,7 @@ defmodule Blockchain.Transaction.Receipt do
       iex> Blockchain.Transaction.Receipt.serialize(%Blockchain.Transaction.Receipt{state: <<1,2,3>>, cumulative_gas: 5, bloom_filter: <<2,3,4>>, logs: "hi mom"})
       [<<1,2,3>>, 5, <<2,3,4>>, "hi mom"]
   """
-  @spec serialize(t) :: RLP.t
+  @spec serialize(t) :: ExRLP.t
   def serialize(trx_receipt) do
     [
       trx_receipt.state,
@@ -60,7 +60,7 @@ defmodule Blockchain.Transaction.Receipt do
     iex> Blockchain.Transaction.Receipt.deserialize([<<>>, <<0>>, <<>>, <<>>])
     %Blockchain.Transaction.Receipt{}
   """
-  @spec deserialize(RLP.t) :: t
+  @spec deserialize(ExRLP.t) :: t
   def deserialize(rlp) do
     [
       state,
@@ -71,7 +71,7 @@ defmodule Blockchain.Transaction.Receipt do
 
     %Blockchain.Transaction.Receipt{
       state: state,
-      cumulative_gas: RLP.decode_unsigned(cumulative_gas),
+      cumulative_gas: :binary.decode_unsigned(cumulative_gas),
       bloom_filter: bloom_filter,
       logs: logs
     }

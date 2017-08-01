@@ -25,7 +25,7 @@ defmodule Blockchain.Contract do
       ...> |> Blockchain.Account.put_account(<<0x10::160>>, %Blockchain.Account{balance: 11, nonce: 5})
       ...> |> Blockchain.Contract.create_contract(<<0x10::160>>, <<0x10::160>>, 1000, 1, 5, EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return]), 5, %Blockchain.Block.Header{nonce: 1})
       {
-        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :contract_create_test}, root_hash: <<108, 121, 175, 108, 152, 24, 131, 223, 204, 209, 143, 197, 188, 249, 235, 10, 75, 232, 57, 88, 61, 194, 109, 192, 200, 140, 70, 15, 3, 53, 54, 117>>},
+        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :contract_create_test}, root_hash: <<147, 69, 180, 75, 134, 172, 4, 139, 196, 40, 253, 92, 248, 87, 51, 88, 182, 152, 139, 13, 235, 25, 34, 156, 93, 145, 30, 170, 172, 24, 93, 4>>},
         1000,
         %EVM.SubState{}
       }
@@ -98,7 +98,7 @@ defmodule Blockchain.Contract do
       ...> |> Blockchain.Account.put_code(<<0x20::160>>, EVM.MachineCode.compile([:push1, 3, :push1, 5, :add, :push1, 0x00, :mstore, :push1, 0, :push1, 32, :return]))
       ...> |> Blockchain.Contract.message_call(<<0x10::160>>, <<0x10::160>>, <<0x20::160>>, <<0x20::160>>, 1000, 1, 5, 5, <<1, 2, 3>>, 5, %Blockchain.Block.Header{nonce: 1})
       {
-        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :message_call_test}, root_hash: <<71, 110, 222, 58, 171, 113, 33, 43, 212, 230, 197, 236, 189, 243, 103, 126, 148, 32, 37, 251, 132, 165, 107, 176, 63, 15, 150, 176, 170, 55, 53, 95>>},
+        %MerklePatriciaTrie.Trie{db: {MerklePatriciaTrie.DB.ETS, :message_call_test}, root_hash: <<167, 171, 171, 106, 158, 187, 23, 240, 91, 213, 210, 27, 151, 116, 57, 79, 97, 110, 201, 73, 204, 180, 114, 123, 138, 253, 156, 185, 239, 181, 117, 194>>},
         1000,
         %EVM.SubState{},
         <<0x08::256>>
@@ -146,8 +146,7 @@ defmodule Blockchain.Contract do
   ## Examples
 
       iex> Blockchain.Contract.new_contract_address(<<0x01::160>>, 1)
-      <<26, 226, 171, 193, 138, 26, 94, 212, 184, 62, 17, 36, 65, 65, 158,
-        237, 85, 170, 163, 147>>
+      <<226, 9, 113, 163, 97, 244, 118, 145, 234, 155, 80, 129, 216, 104, 110, 120, 69, 35, 207, 135>>
 
       iex> Blockchain.Contract.new_contract_address(<<0x01::160>>, 2)
       <<119, 28, 153, 224, 10, 74, 14, 123, 121, 42, 82, 110, 145, 237,
@@ -160,7 +159,7 @@ defmodule Blockchain.Contract do
   @spec new_contract_address(EVM.address, integer()) :: EVM.address
   def new_contract_address(sender, nonce) do
     [sender, nonce - 1]
-      |> RLP.encode()
+      |> ExRLP.encode()
       |> BitHelper.kec()
       |> BitHelper.mask_bitstring(160)
   end

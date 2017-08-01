@@ -61,7 +61,7 @@ defmodule Blockchain.Block.Header do
       iex> Blockchain.Block.Header.serialize(%Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>})
       [<<1::256>>, <<2::256>>, <<3::160>>, <<4::256>>, <<5::256>>, <<6::256>>, <<>>, 5, 1, 5, 3, 6, "Hi mom", <<7::256>>, <<8::64>>]
   """
-  @spec serialize(t) :: RLP.t
+  @spec serialize(t) :: ExRLP.t
   def serialize(h) do
     [
       h.parent_hash,
@@ -92,7 +92,7 @@ defmodule Blockchain.Block.Header do
       iex> Blockchain.Block.Header.deserialize([<<1::256>>, <<2::256>>, <<3::160>>, <<4::256>>, <<5::256>>, <<6::256>>, <<>>, <<5>>, <<1>>, <<5>>, <<3>>, <<6>>, "Hi mom", <<7::256>>, <<8::64>>])
       %Blockchain.Block.Header{parent_hash: <<1::256>>, ommers_hash: <<2::256>>, beneficiary: <<3::160>>, state_root: <<4::256>>, transactions_root: <<5::256>>, receipts_root: <<6::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<7::256>>, nonce: <<8::64>>}
   """
-  @spec deserialize(RLP.t) :: t
+  @spec deserialize(ExRLP.t) :: t
   def deserialize(rlp) do
     [
       parent_hash,
@@ -120,11 +120,11 @@ defmodule Blockchain.Block.Header do
       transactions_root: transactions_root,
       receipts_root: receipts_root,
       logs_bloom: logs_bloom,
-      difficulty: RLP.decode_unsigned(difficulty),
-      number: RLP.decode_unsigned(number),
-      gas_limit: RLP.decode_unsigned(gas_limit),
-      gas_used: RLP.decode_unsigned(gas_used),
-      timestamp: RLP.decode_unsigned(timestamp),
+      difficulty: :binary.decode_unsigned(difficulty),
+      number: :binary.decode_unsigned(number),
+      gas_limit: :binary.decode_unsigned(gas_limit),
+      gas_used: :binary.decode_unsigned(gas_used),
+      timestamp: :binary.decode_unsigned(timestamp),
       extra_data: extra_data,
       mix_hash: mix_hash,
       nonce: nonce,

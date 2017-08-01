@@ -6,6 +6,6 @@ defmodule Blockchain.Transaction.ReceiptTest do
   test "serilalize and deserialize" do
     receipt = %Receipt{state: <<1,2,3>>, cumulative_gas: 5, bloom_filter: <<2,3,4>>, logs: "hi mom"}
 
-    assert receipt == receipt |> Receipt.serialize |> RLP.encode |> RLP.decode |> Receipt.deserialize
+    assert receipt == receipt |> Receipt.serialize |> ExRLP.encode |> ExRLP.decode |> Receipt.deserialize
   end
 end

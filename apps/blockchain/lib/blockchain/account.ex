@@ -59,7 +59,7 @@ defmodule Blockchain.Account do
                      214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75,
                      128, 248, 67, 74>>]
   """
-  @spec serialize(t) :: RLP.t
+  @spec serialize(t) :: ExRLP.t
   def serialize(account) do
     [
       account.nonce,
@@ -81,7 +81,7 @@ defmodule Blockchain.Account do
       iex> Blockchain.Account.deserialize([<<0>>, <<0>>, <<>>, <<167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74>>])
       %Blockchain.Account{}
   """
-  @spec deserialize(RLP.t) :: t
+  @spec deserialize(ExRLP.t) :: t
   def deserialize(rlp) do
     [
       nonce,
@@ -91,8 +91,8 @@ defmodule Blockchain.Account do
     ] = rlp
 
     %Blockchain.Account{
-      nonce: RLP.decode_unsigned(nonce),
-      balance: RLP.decode_unsigned(balance),
+      nonce: :binary.decode_unsigned(nonce),
+      balance: :binary.decode_unsigned(balance),
       storage_root: storage_root,
       code_hash: code_hash
     }
@@ -105,7 +105,7 @@ defmodule Blockchain.Account do
   ## Examples
 
       iex> MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
-      ...> |> MerklePatriciaTrie.Trie.update(<<0x01::160>>, RLP.encode([5, 6, <<1>>, <<2>>]))
+      ...> |> MerklePatriciaTrie.Trie.update(<<0x01::160>>, ExRLP.encode([5, 6, <<1>>, <<2>>]))
       ...> |> Blockchain.Account.get_account(<<0x01::160>>)
       %Blockchain.Account{nonce: 5, balance: 6, storage_root: <<0x01>>, code_hash: <<0x02>>}
 
@@ -125,7 +125,7 @@ defmodule Blockchain.Account do
       <<>> -> nil # TODO: Is this the same as deleting the account?
       encoded_account ->
           encoded_account
-          |> RLP.decode()
+          |> ExRLP.decode()
           |> deserialize()
     end
   end
@@ -135,7 +135,7 @@ defmodule Blockchain.Account do
 
   ## Examples
 
-      iex> state = MerklePatriciaTrie.Trie.update(MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db()), <<0x01::160>>, RLP.encode([5, 6, <<1>>, <<2>>]))
+      iex> state = MerklePatriciaTrie.Trie.update(MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db()), <<0x01::160>>, ExRLP.encode([5, 6, <<1>>, <<2>>]))
       iex> Blockchain.Account.get_accounts(state, [<<0x01::160>>, <<0x02::160>>])
       [
         %Blockchain.Account{nonce: 5, balance: 6, storage_root: <<0x01>>, code_hash: <<0x02>>},
@@ -154,14 +154,14 @@ defmodule Blockchain.Account do
   ## Examples
 
       iex> state = Blockchain.Account.put_account(MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db()), <<0x01::160>>, %Blockchain.Account{nonce: 5, balance: 6, storage_root: <<0x01>>, code_hash: <<0x02>>})
-      iex> MerklePatriciaTrie.Trie.get(state, <<0x01::160>>) |> RLP.decode
+      iex> MerklePatriciaTrie.Trie.get(state, <<0x01::160>>) |> ExRLP.decode
       [<<5>>, <<6>>, <<0x01>>, <<0x02>>]
   """
   @spec put_account(EVM.state, EVM.address, t) :: EVM.state
   def put_account(state, address, account) do
     encoded_account = account
       |> serialize()
-      |> RLP.encode()
+      |> ExRLP.encode()
 
     Trie.update(state, address, encoded_account)
   end

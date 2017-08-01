@@ -12,7 +12,7 @@ defmodule Blockchain.BlockTest do
       ommers: [%Header{parent_hash: <<11::256>>, ommers_hash: <<12::256>>, beneficiary: <<13::160>>, state_root: <<14::256>>, transactions_root: <<15::256>>, receipts_root: <<16::256>>, logs_bloom: <<>>, difficulty: 5, number: 1, gas_limit: 5, gas_used: 3, timestamp: 6, extra_data: "Hi mom", mix_hash: <<17::256>>, nonce: <<18::64>>}]
     }
 
-    assert block == block |> Block.serialize |> RLP.encode |> RLP.decode |> Block.deserialize
+    assert block == block |> Block.serialize |> ExRLP.encode |> ExRLP.decode |> Block.deserialize
   end
 
 end
