@@ -44,7 +44,7 @@ defmodule MerklePatriciaTrie.Trie.Node do
   def encode_node(trie_node, trie) do
     trie_node
     |> encode_node_type()
-    |> RLP.encode()
+    |> ExRLP.encode()
     |> Storage.put_node(trie)
   end
 

@@ -19,12 +19,12 @@ defmodule MerklePatriciaTrie.Trie.Storage do
       iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db())
       iex> MerklePatriciaTrie.Trie.Storage.put_node(<<>>, trie)
       nil
-      iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode("Hi"), trie)
+      iex> MerklePatriciaTrie.Trie.Storage.put_node(ExRLP.encode("Hi"), trie)
       <<130, 72, 105>>
-      iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
+      iex> MerklePatriciaTrie.Trie.Storage.put_node(ExRLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
       <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>
   """
-  @spec put_node(RLP.t, Trie.t) :: nil | binary()
+  @spec put_node(ExRLP.t, Trie.t) :: nil | binary()
   def put_node(rlp_encoded_node, trie) do
     case byte_size(rlp_encoded_node) do
       0 -> nil # nil is nil
@@ -57,19 +57,19 @@ defmodule MerklePatriciaTrie.Trie.Storage do
     ** (RuntimeError) Cannot find value in DB: <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>
 
     iex> trie = MerklePatriciaTrie.Trie.new(MerklePatriciaTrie.Test.random_ets_db(), <<130, 72, 105>>)
-    iex> MerklePatriciaTrie.Trie.Storage.put_node(RLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
+    iex> MerklePatriciaTrie.Trie.Storage.put_node(ExRLP.encode(["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]), trie)
     <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>
     iex> MerklePatriciaTrie.Trie.Storage.get_node(%{trie| root_hash: <<254, 112, 17, 90, 21, 82, 19, 29, 72, 106, 175, 110, 87, 220, 249, 140, 74, 165, 64, 94, 174, 79, 78, 189, 145, 143, 92, 53, 173, 136, 220, 145>>})
     ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
   """
-  @spec get_node(Trie.t) :: RLP.t | nil
+  @spec get_node(Trie.t) :: ExRLP.t
   def get_node(trie) do
     case trie.root_hash do
       <<>> -> <<>> # nil
-      x when byte_size(x) < @max_rlp_len -> RLP.decode(x) # stored directly
+      x when byte_size(x) < @max_rlp_len -> ExRLP.decode(x) # stored directly
       h ->
         case DB.get(trie.db, h) do # stored in db
-          {:ok, v} -> RLP.decode(v)
+          {:ok, v} -> ExRLP.decode(v)
           :not_found -> raise "Cannot find value in DB: #{inspect trie.root_hash}"
         end
     end

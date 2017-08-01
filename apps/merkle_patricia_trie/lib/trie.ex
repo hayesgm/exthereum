@@ -116,7 +116,7 @@ defmodule MerklePatriciaTrie.Trie do
   @doc """
   Updates a trie by setting key equal to value.
   """
-  @spec update(__MODULE__.t, __MODULE__.key, RLP.t) :: __MODULE__.t
+  @spec update(__MODULE__.t, __MODULE__.key, ExRLP.t) :: __MODULE__.t
   def update(trie, key, value) do
     # We're going to recursively walk toward our key,
     # then we'll add our value (either a new leaf or the value

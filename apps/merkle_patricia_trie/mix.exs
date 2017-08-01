@@ -36,7 +36,7 @@ defmodule MerklePatriciaTrie.Mixfile do
   defp deps do
     [
       {:hex_prefix, in_umbrella: true},
-      {:rlp, in_umbrella: true},
+      {:ex_rlp, github: "exthereum/ex_rlp", branch: "hayesgm/binary-encoding"},
       {:keccakf1600, "~> 2.0.0"},
       {:exleveldb, "~> 0.11.1"},
     ]

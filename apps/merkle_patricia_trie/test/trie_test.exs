@@ -14,7 +14,7 @@ defmodule MerklePatriciaTrie.TrieTest do
   end
 
   def leaf_node(key_end, value) do
-    RLP.encode([HexPrefix.encode({key_end, true}), value])
+    ExRLP.encode([HexPrefix.encode({key_end, true}), value])
   end
 
   def store(node_value, db) do
@@ -25,11 +25,11 @@ defmodule MerklePatriciaTrie.TrieTest do
   end
 
   def extension_node(shared_nibbles, node_hash) do
-    RLP.encode([HexPrefix.encode({shared_nibbles, false}), node_hash])
+    ExRLP.encode([HexPrefix.encode({shared_nibbles, false}), node_hash])
   end
 
   def branch_node(branches, value) when length(branches) == 16 do
-    RLP.encode(branches ++ [value])
+    ExRLP.encode(branches ++ [value])
   end
 
   def blanks(n) do
